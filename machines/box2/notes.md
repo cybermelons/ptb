@@ -62,4 +62,36 @@
 **Pivot: The .designspace filename attribute could be a path traversal vector.**
 **Or: fonttools processing might have a deserialization/code exec CVE.**
 
-### 10:22 — Research fonttools CVEs + path traversal
+### 10:22 — Research + XXE attempts
+- CVE-2023-45139: XXE in fonttools < 4.43.0 via XMLReader/SAX parser
+- Tried XXE in axis name attribute → no callback (strike 1)
+- Tried XXE in source familyname attribute → no callback (strike 2)
+- Tried XXE in lib/dict/string text content → no callback
+- Path traversal in source filename → same "failed during processing" error
+- **Conclusion: XXE not working. Server likely runs fonttools >= 4.43.0 (patched)**
+- **3 strikes on XXE. Moving on.**
+
+### 10:25 — Upload analysis
+- Filename traversal in upload headers accepted (no sanitization) but generation fails
+- Non-.designspace files rejected: "must be a valid .designspace document"
+- Tried path traversal in designspace source filename attr → same processing error
+- Portal dashboard still shows "No generated fonts found" after all attempts
+- Need to make a SUCCESSFUL generation to see what files appear on portal
+- Font creation locally is proving difficult with fonttools API
+
+**Key insight: Portal serves files from /files/ directory. If generator writes output 
+there as a .php file, we get RCE. Need to understand the output path.**
+
+### 10:28 — Font generation always fails
+- Tried DejaVu Sans (valid system TTF) + matching designspace → still fails
+- **3 strikes on font generation.** Every upload fails with same error.
+- Maybe that's by design — the exploit might not require successful generation
+- The uploaded file might still be written to disk even if processing fails
+
+### 10:30 — Back to portal
+- Git only contains auth.php — dashboard.php, index.php not in repo
+- No LFI via query params on dashboard.php
+- No PHP source disclosure
+- Need to look harder at what the portal does with generated fonts
+
+### 10:31 — What haven't I tried?
