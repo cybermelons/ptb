@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(openvpn --config /htb/machines_us-4.ovpn --daemon)",
+      "Bash(ip a:*)",
+      "Bash(git remote:*)"
+    ]
+  }
+}
