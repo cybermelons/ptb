@@ -1,0 +1,9 @@
+# Nmap 7.98 scan initiated Fri Apr  3 10:14:17 2026 as: /usr/lib/nmap/nmap -p- --min-rate 5000 -oN /htb/machines/box2/scans/allports.nmap 10.129.244.202
+Nmap scan report for 10.129.244.202
+Host is up (0.018s latency).
+Not shown: 65533 closed tcp ports (reset)
+PORT   STATE SERVICE
+22/tcp open  ssh
+80/tcp open  http
+
+# Nmap done at Fri Apr  3 10:14:30 2026 -- 1 IP address (1 host up) scanned in 12.66 seconds
