@@ -214,4 +214,16 @@ available so the dashboard shows them (and reveals the format).**
 - Can't write non-.ttf files (extension check)
 - PHP 8.2
 
-### Current blocker: can write arbitrary .ttf files anywhere, need them EXECUTED as PHP/code
+### 11:30 — Extension bypass attempts
+- Tried: null byte, tab in filename, RFC 5987 filename*, filename vs filename* differential
+- ALL blocked by Python's endswith('.ttf', '.otf') check
+- Werkzeug uses filename* when present (RFC 6266), no parsing differential
+- nginx fastcgi config has try_files → blocks path_info exploit
+- Can't write .php, .ini, .conf, .py files — ONLY .ttf/.otf
+
+### Current blocker: can write arbitrary .ttf files anywhere, need code execution path
+### Possibilities not yet tried:
+- Write SSH authorized_keys for variatype user (if their home has .ssh)  
+- Write a Python file through some other mechanism
+- Exploit the GENERATED font (output), not just the uploaded master
+- Find a way to make PHP include/require a .ttf file
