@@ -238,4 +238,13 @@ available so the dashboard shows them (and reveals the format).**
 **SSTI might not be exploitable unless we can control flash content.
 Need to check if any error message includes user input.**
 
-### 11:42 — Enumerate more system files via LFI
+### 11:42 — Enumerate more system files via LFI  
+- /etc/shadow: Content-Length=798 but 0 bytes readable (stat works, read doesn't)
+- Fuzzed /opt/, /home/steve/ with seclists — nothing readable beyond what we already have
+- www-data can read: /etc/passwd, /etc/group, /etc/hosts, nginx configs, PHP configs, 
+  Flask app source + templates, portal PHP source, systemd service files, /etc/fstab
+- www-data CANNOT read: /home/steve/*, /etc/shadow content, /root/*
+- SSTI in variable_font_generator.html: `{{ message|safe }}` — but |safe only skips 
+  HTML escaping, doesn't re-evaluate Jinja2 templates. NOT exploitable for SSTI.
+
+### Still need: a way to turn .ttf file write into code execution
