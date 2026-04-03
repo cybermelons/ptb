@@ -222,8 +222,20 @@ available so the dashboard shows them (and reveals the format).**
 - Can't write .php, .ini, .conf, .py files — ONLY .ttf/.otf
 
 ### Current blocker: can write arbitrary .ttf files anywhere, need code execution path
-### Possibilities not yet tried:
-- Write SSH authorized_keys for variatype user (if their home has .ssh)  
-- Write a Python file through some other mechanism
-- Exploit the GENERATED font (output), not just the uploaded master
-- Find a way to make PHP include/require a .ttf file
+### 11:40 — SSTI FOUND IN FLASK TEMPLATE!
+- Read /opt/variatype/templates/tools/variable_font_generator.html
+- Flash messages rendered with `{{ message|safe }}` — NO ESCAPING!
+- Flash messages come from the error/success paths in the Flask app
+- The flash content comes from hardcoded strings... BUT:
+  - `flash('Font generation failed during processing.', 'error')` — hardcoded
+  - HOWEVER: what if we can inject into the flash through the designspace/font?
+  - The only user-controlled flash is: `flash('Only .ttf and .otf master fonts are supported.', 'error')`
+  - That's also hardcoded. ALL flash messages are hardcoded strings.
+  - **Wait — the exception handlers catch generic exceptions. If fonttools 
+    raises an error with user-controlled content in the message...**
+  - Actually no, CalledProcessError just says the command failed.
+  
+**SSTI might not be exploitable unless we can control flash content.
+Need to check if any error message includes user input.**
+
+### 11:42 — Enumerate more system files via LFI
