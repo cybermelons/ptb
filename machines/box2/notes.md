@@ -167,4 +167,51 @@ But font generation never succeeds so no files exist.
 **Need to find what format view.php actually accepts, or make files 
 available so the dashboard shows them (and reveals the format).**
 
-### 10:55 — Stuck. Need to pivot to something truly new.
+### 10:55 — BREAKTHROUGH: Font generation SUCCESS!
+- Local build with fonttools varLib.build() revealed the issue: OS/2 table version 1 missing sCapHeight
+- Fixed the font (set OS/2 version to 4, added sCapHeight/sxHeight)
+- Uploaded fixed font → **SUCCESS!** "Your variable font is ready."
+- Download link: `/download/vtusBYgZWgQ` (short base64-ish token)
+- File identifiers are NOT filenames, they're SHORT TOKENS
+
+### 10:56 — Font generation SUCCESS + LFI CONFIRMED
+- Fixed font: OS/2 table version 1→4, added sCapHeight/sxHeight
+- Uploaded → SUCCESS! Token: vtusBYgZWgQ, download: /download/vtusBYgZWgQ
+- Portal dashboard now shows files as: variabype_<token>.ttf
+- Portal params are **`f=`** NOT `file=` (wasted time with wrong param!)
+- **LFI in download.php!** Uses `str_replace("../", "", $file)` — single pass
+- Bypass: `....//` → after replace → `../`
+- Traversal at depth 5: `....//....//....//....//....//etc/passwd` works!
+- Read view.php + download.php source code
+- User: **steve** (uid 1000, /home/steve, /bin/bash)
+- Files dir: /var/www/portal.variatype.htb/public/files/
+
+### Credentials
+- gitbot:G1tB0t_Acc3ss_2025! (portal)
+
+### 11:22 — Reading files via LFI
+- Read /etc/passwd → user: **steve** (uid 1000)
+- Read nginx configs: Flask at 127.0.0.1:5000, portal at /var/www/portal.variatype.htb/public
+- **Read Flask app.py at /opt/variatype/app.py** — FULL SOURCE!
+- Read view.php and download.php source
+
+### Flask app.py key findings:
+- Masters saved with ORIGINAL filename: `os.path.join(workdir, font.filename)` — **PATH TRAVERSAL!**
+- designspace saved as hardcoded 'config.designspace'  
+- Processing: `subprocess.run(['fonttools', 'varLib', 'config.designspace'], cwd=workdir)`
+- Output goes to: `/var/www/portal.variatype.htb/public/files/variabype_<token>.ttf`
+- Extension check: `font.filename.endswith(('.ttf', '.otf'))` — MUST end with .ttf/.otf
+
+### download.php source:
+- `str_replace("../", "", $file)` — single pass, bypassed with `....//`
+- Reads from `/var/www/portal.variatype.htb/public/files/`
+- Serves with readfile() (no PHP execution)
+
+### 11:25 — Exploiting path traversal write
+- Can write .ttf/.otf files to ARBITRARY paths via master filename traversal
+- Wrote PHP webshell as cmd.php.ttf to portal public dir → file exists but nginx won't execute .php.ttf
+- PHP path_info exploit (cgi.fix_pathinfo) → 404
+- Can't write non-.ttf files (extension check)
+- PHP 8.2
+
+### Current blocker: can write arbitrary .ttf files anywhere, need them EXECUTED as PHP/code
