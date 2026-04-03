@@ -12,7 +12,18 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"additionalContext\":\"Before stopping: (1) Append latest attempts and findings to worklog.md (2) Commit worklog + notes if there are uncommitted changes\"}}'",
+            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"additionalContext\":\"Before stopping: (1) Append latest attempts and findings to notes.md (2) Commit notes + any changes if uncommitted\"}}'",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreCompact\",\"additionalContext\":\"Context is about to be compacted. Before losing history: commit all uncommitted notes.md and report.md changes NOW.\"}}'",
             "timeout": 5
           }
         ]

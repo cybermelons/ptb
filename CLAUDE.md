@@ -26,36 +26,91 @@ Additional tools installable at runtime via `apt` or `pip`.
 - Save scans to `scans/`, scripts to `exploits/`
 - `notes.md` — chronological worklog of commands, results, dead ends, pivots
 - `report.md` — polished final writeup with attack chain, creds, flags, postmortem
-- Methodology: recon > enum > exploit > privesc > post
+## Methodology
 
-## Worklog Discipline
+### Phase 1: Recon
+- nmap service scan + full port scan (parallel)
+- Add hostnames to /etc/hosts
+- Grab banners, check anonymous access (FTP, SMB, etc.)
+- Download any available files (JARs, configs, backups)
+- Commit: `notes: initial recon complete`
 
-`notes.md` is the running worklog. Keep it updated throughout the engagement:
+### Phase 2: Enumerate + Research
+- Identify service versions → research CVEs (use agents in parallel)
+- Web: directory brute, check for hidden endpoints, vhosts
+- Decompile/analyze any downloaded artifacts
+- Map the attack surface BEFORE trying anything
+- Commit: `notes: enumeration complete, attack plan`
 
-- Every significant command and a 1-line result summary
-- Dead ends: what you tried, why it failed, what you learned
-- Pivots: when you change approach and why
-- Raw and chronological — don't revise, just append
+### Phase 3: Exploit → User
+- Work the most promising vector first
+- **15-minute rule:** if an approach fails 3 times or takes 15 min, STOP and pivot
+- Commit after each attempt, not just successes
 
-`report.md` is written at the end: polished attack chain, creds, flags, postmortem.
+### Phase 4: Survey → Privesc → Root
+- **SURVEY FIRST.** Run the full post-shell checklist below BEFORE touching privesc
+- Read any source code, configs, backups found during survey
+- If source code exists, TRACE the code — don't black-box fuzz
+- Map the privilege graph: who owns what, who runs what, who can write where
+- Commit frequently
+
+### Phase 5: Report
+- Write `report.md` — polished attack chain, creds, flags, postmortem, dead ends
+- Final commit + push
+
+## notes.md — Worklog
+
+The running worklog. Append-only, chronological, raw:
+
+```
+## 09:15 — Recon
+- `nmap -sC -sV` → ports 21,22,80,8080 open
+- FTP anonymous → found employee-service.jar
+
+## 09:25 — Trying CXF SSRF
+- Sent MTOM XOP:Include → got callback on listener. SSRF confirmed.
+- Read /etc/passwd → found dev_ryan user
+- Read hoverfly.service → creds admin:O7IJ27MyyXiU
+
+## 09:35 — Dead end: Hoverfly file read CVE
+- Tried CVE-2024-45388 → "relative path is invalid". Patched. Moving on.
+```
 
 **When to commit:**
-- After completing each logical phase (recon done, got user shell, etc.)
-- After hitting a dead end and pivoting — commit the attempt before moving on
+- After each phase completion
+- After each dead end (commit the attempt BEFORE pivoting)
+- Every 10-15 minutes of active work
 - Before stopping for any reason
-- Roughly every 10-15 minutes of active work
 
-**Commit style:** Small, frequent commits. `notes: tried XXE on CXF, blocked by input validation` is better than one giant commit at the end.
+Small commits: `notes: tried XXE, blocked` > one giant commit at the end.
 
 ## Post-Shell Checklist
 
-Run these IMMEDIATELY after getting any new shell, before attempting complex exploits:
-1. `ls -la ~` and `find ~ -type f` — backups, zips, source code, notes
+Run ALL of these IMMEDIATELY after getting any new shell. Survey before you exploit.
+
+1. `ls -la ~` and `find ~ -type f` — look at what's already here
 2. `sudo -l` — sudo privileges
 3. `id && groups` — group memberships
-4. `systemctl list-timers --all` — systemd timers
-5. `find / -writable -type f ! -path '/proc/*' ! -path '/sys/*' 2>/dev/null` — writable files
-6. `getfacl <target dirs>` — ACLs beyond standard permissions
-7. `ss -tlnp` — internal services
+4. `cat /etc/passwd | grep sh$` — users with shells
+5. `systemctl list-timers --all` — systemd timers (cron equivalent)
+6. `ss -tlnp` — internal services
+7. `find / -writable -type f ! -path '/proc/*' ! -path '/sys/*' 2>/dev/null` — writable files
+8. `getfacl <target dirs>` — ACLs beyond standard permissions
+9. `cat /etc/crontab; ls /etc/cron.d/` — cron jobs
+10. `find / -perm -4000 -type f 2>/dev/null` — SUID binaries
 
-Time-box each exploitation approach to 15 minutes. If stuck, re-enumerate.
+Log results in notes.md. Commit. THEN start privesc.
+
+## Anti-Loop Rules
+
+**3-strike rule:** If the same goal fails 3 times via different methods, STOP. Don't try a 4th method. Instead:
+1. Write down in notes.md: what is the goal, why is it failing
+2. Ask: is the GOAL wrong, not just the method?
+3. List ALL paths to the goal (not variations of what you just tried)
+4. Check if the information exists somewhere you haven't looked
+
+**Method vs location:** When you can't access something, the fix is usually "find it somewhere else" not "try another way to access the same place."
+
+**Source code = trace, not fuzz:** If you have source code, read the actual execution path. Don't revert to black-box testing. The answer is in the code.
+
+**Survey before solve:** Every time you get new access (shell, web login, new service), LOOK AROUND before exploiting. The cost is seconds. The savings are hours.
