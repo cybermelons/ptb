@@ -94,4 +94,37 @@ there as a .php file, we get RCE. Need to understand the output path.**
 - No PHP source disclosure
 - Need to look harder at what the portal does with generated fonts
 
-### 10:31 — What haven't I tried?
+### 10:31 — Exhaustive font generator testing
+- Tried DejaVu Sans with exact matching familyname/stylename → fails
+- Tried absolute paths to system fonts → fails
+- Tried format 5.0 designspace → fails
+- Tried PHP webshell as .ttf → accepted but generation fails
+- Non-.ttf/.otf masters rejected: "Only .ttf and .otf master fonts are supported"
+- Portal dashboard never shows generated fonts
+- No additional endpoints found on main site
+- No SQLi on portal login (hardcoded array auth)
+- SSH is key-only auth
+
+**STOP. 3+ strikes on font generation. Something fundamental is different 
+about how this works. I need to SURVEY what I'm missing, not keep trying variations.**
+
+**What am I missing?**
+- Maybe there's a queue/job system and results appear later?
+- Maybe the output goes to a DIFFERENT subdomain?
+- Maybe I need to check the PORTAL source more carefully
+- Maybe the exploit is in the .designspace XML processing, not font generation
+
+### 10:35 — More dead ends
+- XInclude in designspace → no callback
+- FamilyName path traversal → no output files
+- Guessed filenames in portal /files/ → all 404
+- No files in /uploads/, /output/, /generated/ on main site
+- The font generator NEVER produces output (at least none visible to us)
+
+**CRITICAL QUESTION: Am I even looking at the right vulnerability?**
+- Maybe the font generator is a distraction
+- Maybe the entry point is through the PORTAL, not the generator
+- Maybe I need to enumerate MORE subdomains
+- Maybe there's a way to register/create an account on the portal
+
+### 10:38 — Complete re-survey
