@@ -127,4 +127,20 @@ about how this works. I need to SURVEY what I'm missing, not keep trying variati
 - Maybe I need to enumerate MORE subdomains
 - Maybe there's a way to register/create an account on the portal
 
-### 10:38 — Complete re-survey
+### 10:38 — Complete re-survey  
+- No additional subdomains (bigger wordlist confirmed only 'portal')
+- No hidden endpoints on main site
+- No parameter-based vulns on portal dashboard
+- SSTI in designspace familyname → not reflected in error
+- Command injection via upload filename → no OOB callback
+- Command injection via designspace axis name → no OOB callback
+- Small compatible font subset (80 glyphs) still fails processing
+- Single master still fails processing
+- **The font generation is ALWAYS broken on the server side**
+
+**I'm stuck. Need to think about what I'm fundamentally missing.
+Possible I need to look at this from a completely different angle.
+Maybe the exploit isn't through the web at all — maybe the gitbot 
+creds or the git repo contain more info I haven't found.**
+
+### 10:42 — Rethinking
