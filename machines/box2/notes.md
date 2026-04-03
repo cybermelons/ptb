@@ -143,4 +143,28 @@ Possible I need to look at this from a completely different angle.
 Maybe the exploit isn't through the web at all — maybe the gitbot 
 creds or the git repo contain more info I haven't found.**
 
-### 10:42 — Rethinking
+### 10:42 — Found download.php and view.php!
+- Background feroxbuster with bigger wordlist found: **download.php** and **view.php**
+- view.php takes ?file= parameter, validates: must contain [something] (non-empty brackets)
+- Path traversal (../) is ALLOWED in the filename!
+- Any extension accepted (.ttf, .php, .txt)
+- Empty brackets [] are rejected
+- download.php always says "File parameter required" regardless of method
+- view.php returns empty for files that don't exist (vs "Invalid file name" for bad format)
+
+**Challenge:** Need actual files with brackets to exist on disk.
+Variable font output format: FamilyName[axis].ttf
+But font generation never succeeds so no files exist.
+
+### 10:50 — CORRECTION: bracket bypass was false positive!
+- All earlier "accepted" responses were CURL GLOBBING artifacts!
+- curl without -g interprets [wght] as character range (w,g,h,t)
+- With -g flag (correct), view.php rejects EVERYTHING as "Invalid file name"
+- view.php accepts NO inputs at all — maybe it only works when files exist
+- download.php always says "File parameter required" regardless of method
+- UUIDs, hashes, numbers all rejected by view.php
+
+**Need to find what format view.php actually accepts, or make files 
+available so the dashboard shows them (and reveals the format).**
+
+### 10:55 — Stuck. Need to pivot to something truly new.
