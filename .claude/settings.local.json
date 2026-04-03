@@ -5,5 +5,18 @@
       "Bash(ip a:*)",
       "Bash(git remote:*)"
     ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"additionalContext\":\"Before stopping: (1) Append latest attempts and findings to worklog.md (2) Commit worklog + notes if there are uncommitted changes\"}}'",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
   }
 }
