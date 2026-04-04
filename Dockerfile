@@ -1,7 +1,7 @@
 FROM kalilinux/kali-rolling
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    nodejs npm openvpn iproute2 \
+    nodejs npm iproute2 \
     nmap gobuster feroxbuster nikto sqlmap \
     python3 python3-pip curl wget git \
     net-tools iputils-ping dnsutils \
