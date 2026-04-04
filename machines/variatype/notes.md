@@ -1,6 +1,19 @@
 # VariaType — 10.129.17.22 (originally 10.129.244.202)
 
-## Box Status: www-data shell achieved, steve privesc STUCK
+## Box Status: www-data shell, CVE-2025-15276 PROVEN locally, waiting for steve cron
+
+## BREAKTHROUGH: CVE-2025-15276 (SFD Pickle Deserialization)
+- Previous failure: hex-encoded pickle. FontForge passes RAW STRING to pickle, not hex.
+- Fix: Use pickle protocol 0 (ASCII) and put RAW pickle bytes between quotes in SFD
+- **TESTED LOCALLY AS WWW-DATA: /tmp/sb CREATED with SUID bit!**
+- Exploit file `variabype_rawpickle.ttf` deployed to /files/
+- Waiting for steve's cron to process it
+
+## REMAINING ISSUE: Steve's cron timing
+- On first box instance, cron ran ~50 min after boot
+- On current box, files still in /files/ after extended wait
+- Cron schedule is unknown (personal crontab, unreadable)
+- Possible long interval (hourly?) or condition-based trigger
 
 ## Attack Chain (completed)
 1. Git dump on portal (.git exposed) → `gitbot:G1tB0t_Acc3ss_2025!`
