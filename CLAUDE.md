@@ -98,19 +98,110 @@ Run ALL of these IMMEDIATELY after getting any new shell. Survey before you expl
 8. `getfacl <target dirs>` — ACLs beyond standard permissions
 9. `cat /etc/crontab; ls /etc/cron.d/` — cron jobs
 10. `find / -perm -4000 -type f 2>/dev/null` — SUID binaries
+11. `grep -i passwordauth /etc/ssh/sshd_config` — can users SSH with passwords?
+12. `ls -la /home/` — who has home dirs, what perms?
 
 Log results in notes.md. Commit. THEN start privesc.
 
+## Decision Trees — MANDATORY, not optional
+
+### Got initial RCE (webshell)?
+```
+1. Is the shell clean (<1KB response)?
+   NO  → Deploy a clean shell FIRST. Write a tiny shell to disk by any means available.
+         NEVER enumerate through a binary/polyglot/noisy shell.
+   YES → Continue.
+2. ALWAYS use 2>&1 on every command. Empty output = check stderr, not retry.
+3. ALWAYS use --connect-timeout 3 --max-time 8 on curl/wget. No hanging.
+4. Run post-shell checklist (below).
+5. Commit notes.
+```
+
+### Got LFI / file read?
+```
+1. Read /etc/passwd → list users with shells
+2. Read /etc/ssh/sshd_config → is PasswordAuthentication enabled?
+3. Read app source code (web apps, scripts, configs)
+4. Read /etc/shadow (usually fails but TRY — some boxes have weak perms)
+5. Read SSH keys: /home/<user>/.ssh/id_rsa, id_ed25519
+6. Read git repos: .git/config, git log for credentials in history
+7. Read process info: /proc/self/environ, /proc/self/cmdline
+8. Read cron: /etc/crontab, /var/spool/cron/crontabs/<user>
+```
+
+### Got file write primitive?
+```
+1. Can you write to a web root? → Write a webshell (.php, .jsp, .aspx)
+2. Can you write to a user's ~/.ssh/? → Write authorized_keys
+3. Can you write to cron dirs? → Write a cron job (but check filename rules)
+4. Can you write to /etc/? → passwd, shadow, sudoers.d (if writable)
+5. Can you control the OUTPUT path of a process? → Check if output naming is validated
+6. Extension check on input ≠ extension check on output. Always check both.
+```
+
+### Got SUID binary as another user?
+```
+1. Can you write to their home directory?
+   YES → Plant SSH key. mkdir -p ~/.ssh, write authorized_keys. SSH in. DONE.
+         DO NOT try to read files through SUID bash. Get a real shell first.
+   NO  → Check what you CAN write. /tmp? Cron dirs? Config files?
+2. SSH gives you real uid+gid. SUID only gives euid (not egid).
+   Files owned by root with group=targetuser need egid, not euid.
+   SSH solves this. SUID doesn't.
+```
+
+### Got credentials for a user?
+```
+1. Try SSH first (even if you think it's key-only — CHECK sshd_config).
+2. Try su from existing shell.
+3. Try on web portals, databases, other services.
+4. Try password reuse on other users.
+```
+
+### Command returns empty?
+```
+1. Add 2>&1. Read stderr.
+2. "Permission denied" → understand WHY (check owner, group, perms, ACLs).
+3. "Command not found" → check PATH, use full path.
+4. Still empty → check if output went to a file (redirect conflict).
+   shell_exec("cmd > /tmp/x.txt 2>&1 > /tmp/o.txt") = redirect conflict.
+   Use ONE redirect only.
+```
+
+### New box / IP change?
+```
+1. WIPE old entries from /etc/hosts first. grep -v hostname /etc/hosts > /tmp/h && sudo cp /tmp/h /etc/hosts
+2. Add ONE entry for new IP.
+3. Verify: curl --connect-timeout 3 http://hostname/ 
+4. If curl hangs but ping works → check /etc/hosts for stale entries.
+```
+
+### Stuck for 15+ minutes on one approach?
+```
+1. STOP executing. Write in notes: what am I trying, why is it failing.
+2. Read notes from the beginning. Look for patterns.
+3. Ask: "What's the simplest path to a REAL SHELL as this user?"
+   Not "how do I read this one file" — get the shell, everything follows.
+4. Check: am I trying to READ when I should WRITE?
+   am I trying to EXPLOIT when I should ENUMERATE?
+   am I trying variations of the SAME thing?
+```
+
+### Source code available?
+```
+1. READ IT FIRST. Trace the exact execution path.
+2. Check what the code PRODUCES (output paths), not just what it accepts (input validation).
+3. Input checks ≠ output checks. Bypass might be on the output side.
+```
+
 ## Anti-Loop Rules
 
-**3-strike rule:** If the same goal fails 3 times via different methods, STOP. Don't try a 4th method. Instead:
-1. Write down in notes.md: what is the goal, why is it failing
-2. Ask: is the GOAL wrong, not just the method?
-3. List ALL paths to the goal (not variations of what you just tried)
-4. Check if the information exists somewhere you haven't looked
+**3-strike rule:** If the same goal fails 3 times, STOP. Write in notes: what is the goal, why is it failing. Ask if the GOAL is wrong.
 
-**Method vs location:** When you can't access something, the fix is usually "find it somewhere else" not "try another way to access the same place."
+**Get a shell, not a flag.** When you can read/write as a user, don't try to read one file. Get a proper interactive shell (SSH key, reverse shell). Everything follows from a real shell.
 
-**Source code = trace, not fuzz:** If you have source code, read the actual execution path. Don't revert to black-box testing. The answer is in the code.
+**Stderr is not optional.** Every command gets `2>&1`. Empty output without stderr capture is flying blind.
 
-**Survey before solve:** Every time you get new access (shell, web login, new service), LOOK AROUND before exploiting. The cost is seconds. The savings are hours.
+**Clean tools first.** Never enumerate through a broken/slow/binary tool. Fix your tooling before doing anything else. A 30-second detour to deploy a clean shell saves hours.
+
+**Outputs, not inputs.** When input validation blocks you, check if the OUTPUT path is controlled differently. The input might be validated while the output isn't.
