@@ -41,3 +41,12 @@
 - Check Mirth channels for stored credentials
 - Check CHANNEL table for JS code that might contain creds
 - Look for sedric's SSH key or other files
+
+## notif.py Service (port 54321)
+- `/usr/local/bin/notif.py` — Python, runs as ROOT via systemd (notif.service)
+- Owned by root:sedric (rwxr-x---) — mirth can't read, sedric can
+- Listens on 127.0.0.1:54321, receives XML patient data from Mirth channel
+- Mirth channel: TCP 6661 (HL7/MLLP) → transform → POST to /addPatient
+- Box name "Interpreter" = this Python service likely has code injection
+- Testing injection via curl but reverse shell output mangling makes it hard
+- NEED: write a proper on-target test script, or use the Mirth channel to send data
