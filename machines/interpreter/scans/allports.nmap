@@ -1,0 +1,11 @@
+# Nmap 7.98 scan initiated Sat Apr  4 22:30:40 2026 as: /usr/lib/nmap/nmap --privileged -p- --min-rate 3000 -oN /htb/machines/interpreter/scans/allports.nmap 10.129.244.184
+Nmap scan report for interpreter.htb (10.129.244.184)
+Host is up (0.017s latency).
+Not shown: 65531 closed tcp ports (reset)
+PORT     STATE SERVICE
+22/tcp   open  ssh
+80/tcp   open  http
+443/tcp  open  https
+6661/tcp open  unknown
+
+# Nmap done at Sat Apr  4 22:30:55 2026 -- 1 IP address (1 host up) scanned in 14.84 seconds
