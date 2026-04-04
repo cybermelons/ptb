@@ -273,3 +273,26 @@
 - xp_dirtree works but anonymous auth
 - SQL07 linked server connects to us but TLS handshake blocks
 - overwatch DB exists but FAKEPC$ can't access it
+
+## MSSQL Full Enumeration (FAKEPC$ on fresh box 10.129.18.3)
+
+### Permissions
+- CONNECT SQL + VIEW ANY DATABASE only
+- NO executable xp_ or sp_ procedures
+- tempdb: CONNECT only
+- Cannot modify linked servers
+
+### Key Findings
+- sa is DISABLED
+- Only visible logins: sa (disabled), BUILTIN\Users
+- sqlsvc SQL login exists (used by app) but not visible to us
+- **overwatch DB owned by OVERWATCH\sqlsvc** (Windows auth)
+- FAKEPC$ cannot access overwatch DB
+- SQL07 linked server exists, no login mapping (uses caller's creds)
+- Cannot add/modify linked server logins
+- xp_dirtree/xp_fileexist work but MSSQL service auths anonymously
+
+### MSSQL is a dead end for FAKEPC$
+- We have CONNECT SQL only — can query system views but execute nothing useful
+- The only value: triggering SQL07 linked server which connects to us on 1433
+- But rogue MSSQL needs proper TDS/TLS which we can't implement easily
