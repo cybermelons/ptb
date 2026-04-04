@@ -222,3 +222,23 @@
 1. Pipe 932cddcbdabde3f5 — opens, unknown protocol
 2. DNS simulation callback — untested at proper duration
 3. Some technique we haven't considered at all
+
+## MSSQL Breakthrough
+
+### Access via FAKEPC$ machine account
+- FAKEPC$ can auth to MSSQL (BUILTIN\Users server principal)
+- NOT sysadmin, no xp_cmdshell
+- Can see: master, tempdb, msdb
+- CANNOT access: overwatch DB, SecurityLogs DB (doesn't exist)
+- No impersonation rights
+
+### Linked Servers
+- S200401\SQLEXPRESS → self (local, not configured for remote exec)  
+- **SQL07** → linked server with `rpc,rpc out,data access` — SERVER DOES NOT EXIST
+- SQL07 resolves to 10.10.14.80 (us!) via wildcard DNS
+
+### Attack Vector
+- Set up rogue MSSQL on our IP
+- Trigger query via SQL07 linked server
+- Rogue MSSQL responds with data/commands
+- OR: capture credentials when DC connects to SQL07
