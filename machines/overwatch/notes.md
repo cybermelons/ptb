@@ -296,3 +296,12 @@
 - We have CONNECT SQL only — can query system views but execute nothing useful
 - The only value: triggering SQL07 linked server which connects to us on 1433
 - But rogue MSSQL needs proper TDS/TLS which we can't implement easily
+
+## MAJOR BREAKTHROUGH — sqlmgmt creds captured!
+- Triggered SQL07 linked server via FAKEPC$ MSSQL session
+- mitmsqlproxy (rogue MSSQL with TDS/TLS) captured SQL auth credentials
+- **sqlmgmt:bIhBbzMMnB82yx** — SQL auth AND AD password (Kerberos TGT confirmed!)
+- WinRM requires Kerberos auth (rejects NTLM)
+- Installing gssapi/requests-kerberos for Kerberos WinRM access
+- pywinrm with transport='ntlm' → Access Denied (WinRM only accepts Negotiate/Kerberos)
+- kinit works, curl --negotiate fails (no HTTP/ SPN registered, GSSAPI can't fallback to HOST/)
