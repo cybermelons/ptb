@@ -156,3 +156,27 @@
 - Long wait (30+ min) for DNS callback simulation
 - Checking if the overwatch.exe binary has a DIFFERENT pipe than 932cddcbdabde3f5
 - UDP services (SQL Browser 1434, etc.)
+
+## BREAKTHROUGH — Kerberos Relay Chain
+
+### Setup (all successful):
+1. Created FAKEPC$ machine account (FakeP@ss123!)
+2. Set dNSHostName=FAKEPC.overwatch.htb on FAKEPC$
+3. Added SPNs: cifs/FAKEPC.overwatch.htb, HOST/FAKEPC.overwatch.htb
+4. Added DNS A record: FAKEPC.overwatch.htb → 10.10.14.80
+5. Wildcard DNS *.overwatch.htb → 10.10.14.80
+6. Kerberos TGS for cifs/FAKEPC.overwatch.htb: VERIFIED WORKING
+7. PrinterBug coercion → DC authenticates with Kerberos to our SMB server
+8. krbrelayx decrypts the Kerberos ticket with FAKEPC$'s NT hash
+
+### Current blocker:
+- krbrelayx in "unconstrained delegation abuse" mode needs forwarded TGT
+- FAKEPC$ doesn't have unconstrained delegation (can't set it, need admin)
+- Without TGT, can't relay to LDAP
+- Error: "Delegate info not set, cannot extract ticket!"
+
+### Next steps:
+- Try krbrelayx WITHOUT --delegate-access (regular relay, not delegation abuse)
+- The authenticated SMB session IS valid — krbrelayx just crashes on authdata extraction
+- May need to modify krbrelayx to use the authenticated session differently
+- Alternative: use the Kerberos service ticket + S4U2Proxy chain
