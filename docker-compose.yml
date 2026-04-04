@@ -18,6 +18,9 @@ services:
   kali:
     build: .
     entrypoint: ["sleep", "infinity"]
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
     security_opt:
       - seccomp=unconfined
     network_mode: "service:vpn"

