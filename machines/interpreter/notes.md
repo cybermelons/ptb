@@ -74,3 +74,15 @@
 - Maybe it's not SSTI but Python format string vulnerability
 - Try {0}, {1.__class__} etc for str.format() exploitation
 - Or the service might eval() a specific field with filtered chars
+
+## Password Hash Analysis
+- Hash: PBKDF2-SHA256, 8-byte salt, 32-byte digest
+- Salt: bbff8b0413949da7, tried 1000/10000/100000 iterations
+- Not cracked with common passwords
+- Need rockyou or larger wordlist (not available in container)
+
+## Current Status
+- Shell as mirth (service account, not user)
+- Need sedric's password (for SSH/user flag) or notif.py code exec (for root)
+- notif.py injection testing ongoing — chars () and * are blocked
+- Need to determine exact allowed charset and find the eval/exec point
