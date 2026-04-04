@@ -121,10 +121,38 @@
 - SQL03$ created by admin (no ms-DS-CreatorSID), can't reset password
 - Can write RBCD on FAKEPC$ (our machine) but that's circular — no useful target SPN
 
-## Checkpoint — What am I missing?
-- Port 8000 FILTERED means the WCF service IS running. Who can connect?
-- The firewall likely allows specific source IPs or the local subnet
-- Maybe the intended path involves SQL03 connecting TO port 8000
-- Or maybe the path is: DNS write → add SQL03 A record → something resolves sql03 → callback
-- We've been waiting for callbacks but maybe the timer is long (>10 min)
-- Have NOT tried: Kerberos relay, _msdcs zone manipulation, long waits (>10 min)
+## Relay Results Round 2
+- SMB→LDAP with --remove-mic: auth FAILED (LDAP signing enforced independently of MIC)
+- SMB→MSSQL relay: "login from untrusted domain" — MSSQL detected cross-protocol relay
+- SMB→SMB relay: signing required (expected)
+- SMB→WinRM: not yet tested properly (target format issue)
+- Wildcard DNS *.overwatch.htb → 10.10.14.80 WORKS (verified resolution)
+- Still zero organic traffic from DC after 15+ min with wildcard active
+
+## What's left to try
+- SMB→WinRM relay with explicit target `http://10.129.244.81:5985`
+- Kerberos relay (completely different from NTLM relay)
+- Shadow credentials via RBCD chain
+- Wait longer (sim bot might run on 15-30 min timer)
+- The wildcard DNS + some coercion method we haven't tried
+
+## Checkpoint — Cycle Assessment
+
+### What I've tried (full list):
+1. NTLM relay: SMB→LDAP, SMB→LDAPS, SMB→MSSQL, SMB→SMB (all failed)
+2. RBCD: set on sqlsvc but no SPN, set on FAKEPC$ but circular
+3. DNS: wildcard works, specific records work, zero callbacks in 15+ min
+4. Kerberoast/AS-REP: no targets except guest
+5. Password spray: sqlmgmt, employees — all failed
+6. MSSQL: TCP denied (18456), named pipe denied, Windows auth denied
+7. Named pipe 932cddcbdabde3f5: opens but .NET framing gets no response
+8. SAMR password change on sqlmgmt: access denied
+9. ADCS: not installed. Shadow creds: no write access. SPN-jack: denied.
+10. coercer: PrinterBug works (SMB), WebDAV fails (no WebClient)
+
+### What I have NOT tried:
+- Kerberos relay (krbrelayx) — fundamentally different from NTLM relay
+- Setting SPN on FAKEPC$ + DNS wildcard → force Kerberos auth to our controlled SPN
+- Long wait (30+ min) for DNS callback simulation
+- Checking if the overwatch.exe binary has a DIFFERENT pipe than 932cddcbdabde3f5
+- UDP services (SQL Browser 1434, etc.)
