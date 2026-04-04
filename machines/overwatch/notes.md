@@ -314,3 +314,18 @@
 - Kerberos auth succeeds (token sent) but WinRM denies at authorization level
 - May be box startup timing issue — WinRM may not be fully configured yet
 - Need to wait longer or try alternative access methods
+
+## USER FLAG CAPTURED!
+- **User: 4671bae0d087df5bc31f8a338f47dd65**
+- evil-winrm with Kerberos works (pywinrm didn't handle message encryption properly)
+- `evil-winrm -i S200401.overwatch.htb -r OVERWATCH.HTB`
+- Shell as overwatch\sqlmgmt
+
+## Full Attack Chain (User)
+1. Guest → software$ share → overwatch.exe → sqlsvc:TI0LKcfHzZw1Vv
+2. sqlsvc → DNS wildcard *.overwatch.htb → 10.10.14.80
+3. sqlsvc → create FAKEPC$ machine account  
+4. FAKEPC$ → MSSQL auth (BUILTIN\Users)
+5. MSSQL → SQL07 linked server → dns resolves to us → rogue MSSQL (mitmsqlproxy)
+6. **mitmsqlproxy captures sqlmgmt:bIhBbzMMnB82yx** (SQL auth creds = AD password)
+7. evil-winrm Kerberos → shell as sqlmgmt → user.txt
