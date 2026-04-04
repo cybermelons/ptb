@@ -105,11 +105,18 @@
 - Can't modify SQL03$ RBCD (no write access)
 - sqlsvc has `scriptPath: WRITE` on itself (logon script — needs interactive logon to trigger)
 
-## Vectors Not Yet Explored
-1. What is the overwatch.exe service account? If it runs as Administrator, finding its Edge history path is key
-2. MSSQL SQL injection via Edge URLs — need to get a malicious URL into Edge history
-3. Can we write to the MSSQL database directly (localhost only) via any tunnel?
-4. SQL03$ password derivation — PASSWD_NOTREQD but has a password. Is it guessable?
-5. Cross-protocol relay (Kerberos relay, not NTLM)
-6. Shadow credentials on any writable account (msDS-KeyCredentialLink)
-7. Certificate abuse (ADCS) — haven't checked if ADCS is installed
+## Ruled Out
+1. ADCS — not installed, no CAs, no templates
+2. Shadow credentials — no msDS-KeyCredentialLink write access
+3. SPN-jacking sqlsvc — insufficient access to set servicePrincipalName
+4. MSSQL named pipe (IPC$) — access denied  
+5. MSSQL remote SQL auth — login failed (localhost-only restriction)
+6. DNS callbacks — 5+ minutes, no traffic from DC to our DNS records
+7. RBCD S4U2Proxy — works but sqlsvc has no SPN, KDC rejects
+
+## Still Possible
+1. MSSQL SQL injection via Edge URLs — the intended path likely involves Edge + MSSQL SQLi
+2. SQL03$ — pre-staged computer account with PASSWD_NOTREQD, unexplored
+3. Kerberos relay (vs NTLM relay) — different technique
+4. The box may need us to WAIT for a simulated user to browse to our DNS record
+5. There may be a scheduled task we can't see that periodically browses URLs
