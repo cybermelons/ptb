@@ -62,6 +62,19 @@ Some apparent wins are false positives:
 
 Always verify before writing to `findings.jsonl`. A finding must be confirmed, not just "probably."
 
+### Tool Failure ≠ Technique Failure
+
+A tool returning "Access Denied" or crashing does NOT mean the technique doesn't work. It might mean the tool has a bug, doesn't support the required protocol variant, or has a configuration issue.
+
+Before concluding a technique is blocked:
+- Try at least ONE alternative tool for the same technique
+- Check if the tool's error is about the protocol/target or about the tool's own internals
+- "Access Denied" from a Python library might be a TLS negotiation failure, not an actual auth denial
+
+Example: pywinrm returning "Access Denied" on WinRM with valid Kerberos creds — the issue was the library's encryption handling, not WinRM denying access. A different tool (evil-winrm) worked immediately.
+
+**Rule:** If auth succeeds (verified independently, e.g. via Kerberos TGT) but the tool says "denied," the tool is wrong. Try another tool.
+
 ## Decision Trees
 
 ### Command returns empty?

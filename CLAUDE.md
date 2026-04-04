@@ -47,7 +47,7 @@ When something fails, classify it BEFORE deciding what to do next:
 - Service isn't installed or isn't reachable
 - OS/version doesn't support the primitive
 - Policy enforcement (signing, channel binding, firewall) you can't bypass
-- Action: STOP immediately. Do not retry variations. Pivot.
+- Action: STOP the **entire technique category** immediately. If NTLM relay fails due to signing, ALL NTLM relay is dead — not just this specific target. Do not retry variations of a hard-blocked category. Pivot.
 
 **How to tell the difference:** Ask "If I had perfect syntax and unlimited retries, would this ever work given the current environment?" If no, it's a hard block.
 
