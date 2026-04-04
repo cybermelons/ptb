@@ -20,9 +20,10 @@ You never run a tool "just to see what happens." Every action tests a specific c
 2. Pick highest-priority unexplored branch
 3. State hypothesis — one specific, testable claim
 4. Predict confirmation and denial
-5. Execute ONE command
-6. Interpret: confirmed, denied, or inconclusive?
-7. Append to state files (see `.claude/skills/state-management.md`)
+5. **Test the denial prediction FIRST.** Design a probe that would disprove your hypothesis. If it survives disproof, then test for confirmation. Never skip this — confirmation bias is the #1 time waster.
+6. Execute ONE command — one variable changed per test. If you change two things, you can't interpret the result.
+7. Interpret: confirmed, denied, or inconclusive? **Read error messages as data, not just pass/fail.** The content of an error (exception type, stack trace, error string) often reveals the exact internal implementation. An error that says `[EVAL_ERROR]` is not a failure — it's a diagnosis.
+8. Append to state files (see `.claude/skills/state-management.md`)
 
 ### Fast Loop (use mid-branch when next step is obvious)
 
@@ -31,6 +32,14 @@ You never run a tool "just to see what happens." Every action tests a specific c
 3. Interpret and append to state
 
 If the fast loop produces anything surprising or ambiguous, escalate to full cycle.
+
+### Reasoning Traps
+
+**Confirmation bias:** You formed a model and bent observations to fit it. When evidence contradicts your hypothesis, KILL THE HYPOTHESIS — don't add qualifiers ("it's Jinja2 but with a filter"). If you catch yourself saying "X but with Y exception," you're probably wrong about X.
+
+**False negatives closing paths:** When a test says something is "blocked" or "not present," that's a claim. If that claim closes off a major attack path, re-test it in isolation — one character, one field, nothing else changed. A false negative on a critical capability (like "parens are blocked" when they're not) can waste hours.
+
+**Probing with exploits instead of diagnostics:** Before you try to exploit a service, send it something UNDEFINED (a nonsense token, a bad type, an empty value). The error it returns fingerprints the internals faster than a successful exploit attempt. Garbage in, diagnostics out.
 
 ### Failure Classification — Run After Every Denied Hypothesis
 
@@ -59,7 +68,11 @@ When something fails, classify it BEFORE deciding what to do next:
 
 ### Self-Check
 
-After every 10 actions or 3 consecutive denied hypotheses: pause, assess progress, consider whether your assumptions are wrong, write assessment to `./logs/checkpoint.md`.
+After every 10 actions or 3 consecutive denied hypotheses: pause and write to `./logs/checkpoint.md`:
+
+1. **What model am I operating under?** Name it explicitly ("I believe this is Jinja2", "I believe parens are blocked"). Is there evidence AGAINST it that I'm explaining away?
+2. **What's my strongest negative result?** Which "blocked/failed" result, if wrong, would open the most progress? Re-test that one.
+3. **Am I building on unverified assumptions?** Trace your current approach back to its root assumption. When was that assumption last tested directly?
 
 ## Phases
 
