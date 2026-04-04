@@ -64,9 +64,32 @@
 - No writable attributes on sqlmgmt or S200401$ from sqlsvc
 - MachineAccountQuota = 10 (can add machine accounts)
 
-## Current Attack Plan
-- DNS poisoning: sqlsvc can write DNS records
-- Possible: create DNS record to redirect traffic, MITM something
-- Possible: RBCD on self + add machine account = impersonate users TO sqlsvc? (need to think through)
-- Need to figure out how DNS write + machine account + RBCD chains together
-- Or: DNS redirect to capture NTLMv2 hashes from services connecting somewhere
+## PrinterBug Coercion Results
+- PrinterBug (MS-RPRN) WORKS — DC connects back to us on 445
+- Captured S200401$ NTLMv2 hash (saved in /tmp/ntlm_hashes.log)
+- SMB→LDAP relay: FAILS — "client requested signing, relaying to LDAP will not work"
+- SMB→LDAPS relay: FAILS — "socket ssl wrapping error: Connection reset by peer" (channel binding)
+- Machine account passwords are not crackable (120-char random)
+- Need HTTP-based coercion to bypass signing — WebDAV or DNS poisoning
+
+## Machine Account Created
+- FAKEPC$ / FakeP@ss123! — RID 7601
+- Ready for RBCD delegation once we can relay successfully
+
+## DNS Records Added (pointing to 10.10.14.80)
+- portal, intranet, webmail, mail, helpdesk, monitor, dashboard, status — all .overwatch.htb
+- wpad — blocked by GQBL, doesn't resolve
+- All others resolve correctly via DC DNS
+
+## Current Approach
+- ntlmrelayx HTTP listener on port 80, relaying to LDAP
+- Waiting for admin/service to browse to one of our poisoned hostnames
+- No callbacks yet after 60 seconds — may need to trigger browsing somehow
+- OR: need to find a way to coerce HTTP auth (WebDAV, WebClient)
+- Patched ntlmrelayx (sys.stdin.read → sleep loop) at /usr/local/bin/ntlmrelayx_patched.py
+
+## TODO
+- Check if WebClient service is running on DC (needed for WebDAV coercion)
+- Try PetitPotam via HTTP (port 80 on DC?) instead of SMB
+- Try DNS record for something the service actually resolves (not just random names)
+- Consider: is there a simpler path we're missing?
