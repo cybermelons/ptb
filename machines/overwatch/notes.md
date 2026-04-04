@@ -305,3 +305,12 @@
 - Installing gssapi/requests-kerberos for Kerberos WinRM access
 - pywinrm with transport='ntlm' → Access Denied (WinRM only accepts Negotiate/Kerberos)
 - kinit works, curl --negotiate fails (no HTTP/ SPN registered, GSSAPI can't fallback to HOST/)
+
+## sqlmgmt WinRM Status
+- sqlmgmt:bIhBbzMMnB82yx confirmed in Remote Management Users
+- Kerberos TGT works, kinit works, kvno works
+- WinRM returns HTTP 500 "Access is denied" consistently
+- NTLM auth rejected (server only accepts Negotiate/Kerberos)
+- Kerberos auth succeeds (token sent) but WinRM denies at authorization level
+- May be box startup timing issue — WinRM may not be fully configured yet
+- Need to wait longer or try alternative access methods
