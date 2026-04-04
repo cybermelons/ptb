@@ -2,7 +2,7 @@
 
 ## FLAGS
 - **User: `4671bae0d087df5bc31f8a338f47dd65`**
-- Root: pending
+- **Root: `75d5af9a280f8e180775b561cca30272`**
 
 ## Recon
 
@@ -329,3 +329,21 @@
 5. MSSQL → SQL07 linked server → dns resolves to us → rogue MSSQL (mitmsqlproxy)
 6. **mitmsqlproxy captures sqlmgmt:bIhBbzMMnB82yx** (SQL auth creds = AD password)
 7. evil-winrm Kerberos → shell as sqlmgmt → user.txt
+
+## ROOT FLAG CAPTURED!
+- **Root: 75d5af9a280f8e180775b561cca30272**
+- WCF KillProcess command injection on localhost:8000
+- SOAP call: `Stop-Process -Name <input> -Force` → injected `; type root.txt > f.txt`
+- WCF service runs as SYSTEM (PID 4)
+- HTTP 200 response = successful execution
+
+## Full Attack Chain (Root)
+1. Guest → software$ share → overwatch.exe → sqlsvc:TI0LKcfHzZw1Vv
+2. sqlsvc → DNS wildcard *.overwatch.htb → 10.10.14.80
+3. sqlsvc → create FAKEPC$ machine account + set dNSHostName + SPNs
+4. FAKEPC$ → MSSQL auth (BUILTIN\Users)
+5. MSSQL → EXEC AT SQL07 linked server → DNS resolves to us
+6. mitmsqlproxy (rogue MSSQL with TDS/TLS) captures **sqlmgmt:bIhBbzMMnB82yx**
+7. evil-winrm Kerberos → shell as sqlmgmt → **user.txt**
+8. From shell: SOAP call to localhost:8000 WCF KillProcess → command injection as SYSTEM
+9. `type root.txt > f.txt` → **root.txt**
