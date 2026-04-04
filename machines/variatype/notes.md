@@ -144,10 +144,18 @@ downloaded_path = index.download(plugin_url, PLUGIN_DIR)
 
 ## BREAKTHROUGH CONFIRMED
 - /tmp/sb exists: -rwsr-xr-x 1 STEVE steve — SUID bash owned by steve!
-- CVE-2025-15276 pickle RCE WORKED. Steve's cron DID fire eventually.
-- euid=1000(steve) confirmed. ls /home/steve/ works.
-- user.txt exists (root:steve 640)
-- Box died before we could cat the flag. ONE command away.
+- CVE-2025-15276 pickle RCE WORKED. Steve's cron fires ~49 min after boot.
+- euid=1000(steve) confirmed. ls /home/steve/ works. Child procs inherit euid.
+- user.txt is **root:steve 640** — euid=steve can't read it (owner=root, need GROUP=steve)
+- SUID bash gives euid=steve but NOT egid=steve. groups stays www-data.
+- cat user.txt → "Permission denied" (need steve GROUP, not just euid)
+
+## CORRECT approach for user flag
+- Use the PICKLE EXPLOIT to read the flag directly during steve's cron
+- The cron runs as REAL steve (uid=steve, gid=steve) — FULL access
+- Upload SFD with pickle: `cat /home/steve/user.txt > /tmp/userflag.txt; chmod 644 /tmp/userflag.txt`
+- Wait for cron (~49 min after boot), then read /tmp/userflag.txt
+- The SUID bash approach is a dead end for reading root:steve files
 
 ## Tooling lessons
 - /etc/hosts had 4 stale entries — caused most "box down" false alarms
