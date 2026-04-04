@@ -18,6 +18,8 @@ services:
   kali:
     build: .
     entrypoint: ["sleep", "infinity"]
+    security_opt:
+      - seccomp=unconfined
     network_mode: "service:vpn"
     volumes:
       - .:/htb
