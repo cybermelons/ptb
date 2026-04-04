@@ -242,3 +242,34 @@
 - Trigger query via SQL07 linked server
 - Rogue MSSQL responds with data/commands
 - OR: capture credentials when DC connects to SQL07
+
+## Current Plan: Rogue MSSQL via SQL07 Linked Server
+
+### Chain:
+1. FAKEPC$ authenticates to MSSQL on DC ✓
+2. SQL07 linked server exists with rpc,rpc out,data access ✓
+3. sql07.overwatch.htb → 10.10.14.80 via wildcard DNS ✓
+4. NEXT: Start rogue MSSQL listener on port 1433
+5. NEXT: Trigger `EXEC ('SELECT 1') AT SQL07` from FAKEPC$ session
+6. DC connects to us → capture NTLM hash of SQL Server service account
+7. Crack hash or use captured creds for WinRM/further access
+
+## xp_dirtree Result
+- FAKEPC$ CAN execute xp_dirtree and xp_fileexist
+- MSSQL service connects to our UNC share BUT authenticates ANONYMOUSLY
+- MSSQL service = NT SERVICE\MSSQL$SQLEXPRESS → no network credentials
+- Can't capture useful hash this way
+
+## SQL07 Linked Server Rogue MSSQL
+- DC connects to us on TCP 1433 when EXEC AT SQL07
+- Receives our pre-login response correctly
+- Disconnects during LOGIN phase — needs TLS (MSSQL wraps TLS in TDS packets)
+- Writing a full TDS-over-TLS server is complex
+- NEED: proper rogue MSSQL that handles TDS encryption handshake
+
+## Summary of MSSQL access as FAKEPC$
+- Can execute queries in master, tempdb, msdb
+- NOT sysadmin, can't enable xp_cmdshell
+- xp_dirtree works but anonymous auth
+- SQL07 linked server connects to us but TLS handshake blocks
+- overwatch DB exists but FAKEPC$ can't access it
