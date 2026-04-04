@@ -86,3 +86,22 @@
 - Need sedric's password (for SSH/user flag) or notif.py code exec (for root)
 - notif.py injection testing ongoing — chars () and * are blocked
 - Need to determine exact allowed charset and find the eval/exec point
+
+## Key Finding: Parentheses ARE Allowed
+- Previous tests were wrong — () is NOT blocked
+- Allowed chars: ( ) _ + = ' " . /
+- Blocked: ! @ # $ % ^ * - [ ] { } | ; : , < > ? \ ` ~ space
+- BUT: Python expressions in firstname are reflected as LITERALS, not eval'd
+- The firstname field is NOT being eval'd — it's just string interpolation
+
+## Mirth Channel Modification (possible attack)
+- mirthdb has ALL PRIVILEGES on mc_bdd_prod
+- Can UPDATE the CHANNEL table to modify JavaScript code
+- Channel has deploy/preprocess/postprocess scripts
+- Also has date_conversion() function (location unknown — maybe in the transformer JS?)
+- Could inject JS code into the channel that executes as mirth user
+- OR: modify the channel to intercept notif.py traffic and see what format it expects
+
+## Two Paths Forward
+1. Modify Mirth channel JS to get better foothold or intercept notif.py traffic
+2. Find which field notif.py actually eval's (it DOES compute age from DOB)
