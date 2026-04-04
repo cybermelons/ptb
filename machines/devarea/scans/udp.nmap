@@ -1,0 +1,27 @@
+# Nmap 7.98 scan initiated Fri Apr  3 08:48:09 2026 as: /usr/lib/nmap/nmap -sU --top-ports 20 -oN /htb/machines/target/scans/udp.nmap 10.129.16.166
+Nmap scan report for devarea.htb (10.129.16.166)
+Host is up (0.018s latency).
+
+PORT      STATE         SERVICE
+53/udp    closed        domain
+67/udp    open|filtered dhcps
+68/udp    open|filtered dhcpc
+69/udp    closed        tftp
+123/udp   closed        ntp
+135/udp   open|filtered msrpc
+137/udp   closed        netbios-ns
+138/udp   open|filtered netbios-dgm
+139/udp   open|filtered netbios-ssn
+161/udp   open|filtered snmp
+162/udp   closed        snmptrap
+445/udp   closed        microsoft-ds
+500/udp   closed        isakmp
+514/udp   open|filtered syslog
+520/udp   closed        route
+631/udp   closed        ipp
+1434/udp  closed        ms-sql-m
+1900/udp  closed        upnp
+4500/udp  open|filtered nat-t-ike
+49152/udp closed        unknown
+
+# Nmap done at Fri Apr  3 08:48:17 2026 -- 1 IP address (1 host up) scanned in 7.71 seconds

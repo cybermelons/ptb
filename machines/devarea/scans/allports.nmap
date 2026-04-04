@@ -1,0 +1,13 @@
+# Nmap 7.98 scan initiated Fri Apr  3 08:47:45 2026 as: /usr/lib/nmap/nmap -p- --min-rate 5000 -oN /htb/machines/target/scans/allports.nmap 10.129.16.166
+Nmap scan report for 10.129.16.166
+Host is up (0.016s latency).
+Not shown: 65529 closed tcp ports (reset)
+PORT     STATE SERVICE
+21/tcp   open  ftp
+22/tcp   open  ssh
+80/tcp   open  http
+8080/tcp open  http-proxy
+8500/tcp open  fmtp
+8888/tcp open  sun-answerbook
+
+# Nmap done at Fri Apr  3 08:47:58 2026 -- 1 IP address (1 host up) scanned in 13.10 seconds
