@@ -88,8 +88,28 @@
 - OR: need to find a way to coerce HTTP auth (WebDAV, WebClient)
 - Patched ntlmrelayx (sys.stdin.read → sleep loop) at /usr/local/bin/ntlmrelayx_patched.py
 
-## TODO
-- Check if WebClient service is running on DC (needed for WebDAV coercion)
-- Try PetitPotam via HTTP (port 80 on DC?) instead of SMB
-- Try DNS record for something the service actually resolves (not just random names)
-- Consider: is there a simpler path we're missing?
+## NTLM Relay Attempts (all failed)
+- SMB→LDAP: signing blocks relay
+- SMB→LDAPS: channel binding resets connection
+- WebDAV PetitPotam: EFS access denied
+- DNS poisoning (portal, intranet, webmail, etc.): no callbacks in 3+ minutes
+- tcpdump shows ZERO traffic from DC to us (DC not browsing to our DNS records)
+- The admin is NOT actively browsing internal hostnames we can poison
+
+## Additional Findings
+- SQL03$ computer account exists — UAC 4128 (PASSWD_NOTREQD), never logged in, no SPNs
+- SQLServer2005SQLBrowserUser$S200401 group exists (empty)
+- RBCD set on sqlsvc (bloodyAD) — "FAKEPC$ can impersonate on sqlsvc"
+- But S4U2Proxy fails: sqlsvc has no SPN, KDC rejects unknown SPNs
+- Can't set SPN on sqlsvc (insufficient access rights)
+- Can't modify SQL03$ RBCD (no write access)
+- sqlsvc has `scriptPath: WRITE` on itself (logon script — needs interactive logon to trigger)
+
+## Vectors Not Yet Explored
+1. What is the overwatch.exe service account? If it runs as Administrator, finding its Edge history path is key
+2. MSSQL SQL injection via Edge URLs — need to get a malicious URL into Edge history
+3. Can we write to the MSSQL database directly (localhost only) via any tunnel?
+4. SQL03$ password derivation — PASSWD_NOTREQD but has a password. Is it guessable?
+5. Cross-protocol relay (Kerberos relay, not NTLM)
+6. Shadow credentials on any writable account (msDS-KeyCredentialLink)
+7. Certificate abuse (ADCS) — haven't checked if ADCS is installed
