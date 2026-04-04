@@ -180,3 +180,45 @@
 - The authenticated SMB session IS valid — krbrelayx just crashes on authdata extraction
 - May need to modify krbrelayx to use the authenticated session differently
 - Alternative: use the Kerberos service ticket + S4U2Proxy chain
+
+## Decision Tree Test Results
+
+### Test 1: Pipe 932cddcbdabde3f5 identity
+- Computed SHA1/SHA256/MD5 of WCF endpoint URIs — NO MATCH
+- Pipe is NOT the WCF named pipe endpoint
+- RESULT: Hypothesis C (pipe = WCF) **weakened**
+
+### Test 2: Raw text to pipe
+- Sent \n, "help\n", HTTP GET, null bytes
+- All timed out — pipe doesn't respond to simple text
+- Pipe opens but needs specific binary protocol we haven't identified
+- RESULT: **Inconclusive** — pipe exists but unknown protocol
+
+### Test 3: Port 8000 with 30s timeout
+- curl timed out after 30s — truly firewalled
+- RESULT: Hypothesis B (port 8000 reachable) **ELIMINATED**
+
+### Test 4: UDP services
+- SQL Browser 1434: open|filtered, no response to probe
+- SNMP 161: open|filtered, no response to public community
+- DNS 53: open (known), NTP 123: open
+- RESULT: No new attack surface from UDP
+
+### Remaining hypotheses after elimination:
+- A. MSSQL accessible somehow — HARD BLOCKED (18456 on all auth methods)
+- B. Port 8000 reachable — ELIMINATED
+- C. Pipe = useful service — INCONCLUSIVE (opens but no protocol match)
+- D. Sim bot connects to DNS — UNTESTED at scale (need 10+ min wait)
+- E. Undiscovered service — ELIMINATED (full TCP + UDP scanned)
+
+### Classification per new CLAUDE.md:
+- NTLM relay → HARD BLOCK (signing + channel binding, Server 2022)
+- RBCD S4U → HARD BLOCK (no SPN on sqlsvc, can't set one)
+- Kerberos relay → HARD BLOCK (can't set unconstrained delegation)
+- Port 8000 direct → HARD BLOCK (firewalled)
+- MSSQL remote → HARD BLOCK (login restriction)
+
+### What's NOT hard-blocked:
+1. Pipe 932cddcbdabde3f5 — opens, unknown protocol
+2. DNS simulation callback — untested at proper duration
+3. Some technique we haven't considered at all
