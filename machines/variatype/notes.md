@@ -9,13 +9,13 @@
 - Exploit file `variabype_rawpickle.ttf` deployed to /files/
 - Waiting for steve's cron to process it
 
-## REMAINING ISSUE: Steve's cron timing
-- On first box instance, cron ran ~50 min after boot
-- On current box, files still in /files/ after extended wait
-- Cron schedule is unknown (personal crontab, unreadable)
-- Box keeps despawning (3rd instance now)
-- Possible long interval (hourly?) or condition-based trigger
-- NEED: either wait longer on a stable instance, or find a way to trigger manually
+## CRITICAL REALIZATION: There is NO automatic cron
+- Assumed cron based on ONE observation on ONE box — BAD ASSUMPTION
+- 7+ hours on current instance with ZERO executions
+- Multiple box instances, never triggered
+- **Steve's processing is NOT automated. It requires a TRIGGER.**
+- Need to: find the trigger, OR find a different escalation path entirely
+- Stop waiting. Start actively solving.
 
 ## Rapid redeploy procedure (for next box spawn)
 1. Update /etc/hosts with new IP
