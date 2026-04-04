@@ -50,3 +50,27 @@
 - Box name "Interpreter" = this Python service likely has code injection
 - Testing injection via curl but reverse shell output mangling makes it hard
 - NEED: write a proper on-target test script, or use the Mirth channel to send data
+
+## notif.py Injection Analysis
+
+### Working request format:
+- POST /addPatient with XML, DOB must be DD/MM/YYYY or MM/DD/YYYY
+- Response: "Patient {fn} {ln} ({gender}), {age} years old, received from {sender} at {ts}"
+
+### Input validation:
+- Parentheses `()` → [INVALID_INPUT] (blocked)
+- `{{expr}}` → renders as `{expr}` literally (NOT Jinja2)
+- Digits in braces `{{7*7}}` → [INVALID_INPUT]  
+- Single quotes in braces → [INVALID_INPUT]
+- The app uses Python str.format() or f-strings, NOT Jinja2
+- Box name "Interpreter" = likely Python eval/exec somewhere with filters
+
+### What's NOT blocked:
+- Alphanumeric names
+- Underscores and dots ({{self.__class__}} renders as {self.__class__})
+- The response interpolates firstname, lastname, gender, sender_app, timestamp directly
+
+### Next: find the actual injection point
+- Maybe it's not SSTI but Python format string vulnerability
+- Try {0}, {1.__class__} etc for str.format() exploitation
+- Or the service might eval() a specific field with filtered chars
