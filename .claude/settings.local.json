@@ -15,7 +15,10 @@
       "Bash(echo \"exit: $?\")",
       "Bash(python3 -c \"import json; print\\('ok'\\)\")",
       "Bash(sudo apt-get:*)",
-      "Bash(jq --version)"
+      "Bash(jq --version)",
+      "Bash(git add:*)",
+      "Bash(git rm:*)",
+      "Bash(git commit -m ':*)"
     ]
   }
 }
