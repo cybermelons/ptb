@@ -114,9 +114,17 @@
 6. DNS callbacks — 5+ minutes, no traffic from DC to our DNS records
 7. RBCD S4U2Proxy — works but sqlsvc has no SPN, KDC rejects
 
-## Still Possible
-1. MSSQL SQL injection via Edge URLs — the intended path likely involves Edge + MSSQL SQLi
-2. SQL03$ — pre-staged computer account with PASSWD_NOTREQD, unexplored
-3. Kerberos relay (vs NTLM relay) — different technique
-4. The box may need us to WAIT for a simulated user to browse to our DNS record
-5. There may be a scheduled task we can't see that periodically browses URLs
+## Key New Finding
+- Port 8000 (WCF) is **FILTERED** not closed — firewall rule exists, service IS running
+- MSSQL login 18456 = auth processed but denied — not a network block, login restriction
+- SQL03$ password not crackable (tried machine name, common defaults, empty — all PREAUTH_FAILED)
+- SQL03$ created by admin (no ms-DS-CreatorSID), can't reset password
+- Can write RBCD on FAKEPC$ (our machine) but that's circular — no useful target SPN
+
+## Checkpoint — What am I missing?
+- Port 8000 FILTERED means the WCF service IS running. Who can connect?
+- The firewall likely allows specific source IPs or the local subnet
+- Maybe the intended path involves SQL03 connecting TO port 8000
+- Or maybe the path is: DNS write → add SQL03 A record → something resolves sql03 → callback
+- We've been waiting for callbacks but maybe the timer is long (>10 min)
+- Have NOT tried: Kerberos relay, _msdcs zone manipulation, long waits (>10 min)
