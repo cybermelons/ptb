@@ -32,6 +32,31 @@ You never run a tool "just to see what happens." Every action tests a specific c
 
 If the fast loop produces anything surprising or ambiguous, escalate to full cycle.
 
+### Failure Classification — Run After Every Denied Hypothesis
+
+When something fails, classify it BEFORE deciding what to do next:
+
+**SOFT block** — the technique is viable but your execution was wrong:
+- Syntax error, wrong encoding, bad parameter
+- Wrong tool version or flags
+- Timing issue, race condition
+- Action: fix and retry (max 2 retries, then reassess)
+
+**HARD block** — the environment doesn't support a prerequisite for this technique:
+- Required feature/role/flag isn't set and you can't set it
+- Service isn't installed or isn't reachable
+- OS/version doesn't support the primitive
+- Policy enforcement (signing, channel binding, firewall) you can't bypass
+- Action: STOP immediately. Do not retry variations. Pivot.
+
+**How to tell the difference:** Ask "If I had perfect syntax and unlimited retries, would this ever work given the current environment?" If no, it's a hard block.
+
+**On hard block, pivot with this sequence:**
+1. List your current capabilities (creds, access, write primitives, network position)
+2. Consult `.claude/skills/technique-graph.md` — find techniques that match your capabilities WITHOUT the failed prerequisite
+3. Add the new branches to `unexplored.jsonl` with rationale
+4. Log the hard block to `tested.jsonl` with `"conclusion":"denied","block_type":"hard","why":"<structural reason>"`
+
 ### Self-Check
 
 After every 10 actions or 3 consecutive denied hypotheses: pause, assess progress, consider whether your assumptions are wrong, write assessment to `./logs/checkpoint.md`.
@@ -60,16 +85,21 @@ Operational knowledge lives in skills. Load the relevant skill before acting:
 - `.claude/skills/post-exploit.md` — post-shell checklist, privilege checks, lateral movement, decision trees for SUID/creds
 - `.claude/skills/reporting.md` — finding format, severity classification, evidence standards
 - `.claude/skills/ambiguity.md` — how to handle filtered ports, 403s, timeouts, partial versions, empty output
+- `.claude/skills/technique-graph.md` — attack technique prerequisites and pivot paths — consult on hard blocks
 
 ## Stuck for 15+ minutes on one approach?
 
 ```
 1. STOP executing. Write in notes: what am I trying, why is it failing.
-2. 3-strike rule: same goal failed 3 times? The GOAL may be wrong, not just the method.
-3. Read notes from the beginning. Look for patterns.
-4. Ask: "What's the simplest path to a REAL SHELL as this user?"
+2. Classify every failure as soft or hard (see Failure Classification above).
+   If you have 2+ hard blocks on the same path, the PATH is dead. Not just the method.
+3. 3-strike rule: same goal failed 3 times? The GOAL may be wrong, not just the method.
+4. Read notes from the beginning. Look for patterns.
+5. List current capabilities explicitly: what creds, what access, what write primitives,
+   what network position. Then consult technique-graph.md for alternative routes.
+6. Ask: "What's the simplest path to a REAL SHELL as this user?"
    Not "how do I read this one file" — get the shell, everything follows.
-5. Check: am I trying to READ when I should WRITE?
+7. Check: am I trying to READ when I should WRITE?
    am I trying to EXPLOIT when I should ENUMERATE?
    am I trying variations of the SAME thing?
 ```

@@ -31,6 +31,10 @@ Valid types: `host`, `service`, `tech`, `directory`, `dns`, `cert`, `header`, `u
 
 `conclusion` must be exactly one of: `confirmed`, `denied`, `inconclusive`
 
+When `conclusion` is `denied`, add `block_type` and `why`:
+- `"block_type":"soft","why":"payload syntax wrong, need URL encoding"` — retry with fix
+- `"block_type":"hard","why":"FAKEPC$ lacks TRUSTED_FOR_DELEGATION, requires domain admin to set"` — pivot immediately
+
 ### `./state/unexplored.jsonl` — branch backlog
 
 ```json
