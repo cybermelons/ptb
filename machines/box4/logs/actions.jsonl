@@ -1,0 +1,52 @@
+{"action":"nmap -sC -sV 10.129.18.57","phase":"recon","hypothesis":"identify open services","ts":"2026-04-05T02:09:00Z"}
+{"action":"nmap -sS -p- --min-rate 3000 10.129.18.57","phase":"recon","hypothesis":"find all open TCP ports","ts":"2026-04-05T02:09:30Z"}
+{"action":"nmap -sU --top-ports 50 10.129.18.57","phase":"recon","hypothesis":"check for open UDP services","ts":"2026-04-05T02:10:00Z"}
+{"action":"snmpwalk -v2c -c public 10.129.18.57","phase":"enumeration","hypothesis":"SNMP community string public is valid, will reveal system info","ts":"2026-04-05T02:10:30Z"}
+{"action":"ssh consultant@10.129.18.57","phase":"exploitation","hypothesis":"consultant user exists and password from SNMP works for SSH","ts":"2026-04-05T02:11:30Z"}
+{"action":"eaphammer --cert-wizard create + evil twin on AirTouch-Office","phase":"exploitation","hypothesis":"evil twin will capture 802.1X EAP credentials","ts":"2026-04-05T02:15:00Z"}
+{"action":"check PMKID capture results from hcxdumptool on AirTouch-Internet","phase":"exploitation","hypothesis":"PMKID capture on AirTouch-Internet produced crackable hash","ts":"2026-04-05T02:35:00Z"}
+{"action":"hcxpcaptool -z pmkid.16800 on hcxdumptool capture file","phase":"exploitation","hypothesis":"capture contains extractable PMKID for AirTouch-Internet","ts":"2026-04-05T02:36:00Z"}
+{"action":"aircrack-ng handshakes.hccapx with rockyou.txt","phase":"exploitation","hypothesis":"AirTouch-Internet PSK is in rockyou wordlist","ts":"2026-04-05T02:41:00Z"}
+{"action":"kill old processes, connect to AirTouch-Internet via wpa_supplicant on wlan2","phase":"exploitation","hypothesis":"connecting to AirTouch-Internet opens new network segment","ts":"2026-04-05T02:43:00Z"}
+{"action":"nmap -sn 192.168.3.0/24 — host discovery on new subnet","phase":"recon","hypothesis":"new subnet has additional hosts","ts":"2026-04-05T02:44:00Z"}
+{"action":"nmap -sV -p- 192.168.3.1 — full port scan on AirTouch-Internet gateway","phase":"enumeration","hypothesis":"gateway has management interfaces or additional services","ts":"2026-04-05T02:44:30Z"}
+{"action":"curl login.php on 192.168.3.1 — enumerate login form","phase":"enumeration","hypothesis":"router web panel accessible, enumerate login form","ts":"2026-04-05T02:45:00Z"}
+{"action":"test SQL injection on login.php with diagnostic payloads","phase":"exploitation","hypothesis":"login.php is vulnerable to SQL injection","ts":"2026-04-05T02:46:00Z"}
+{"action":"gobuster dir on 192.168.3.1 — enumerate web directories","phase":"enumeration","hypothesis":"router web app has additional pages/directories","ts":"2026-04-05T02:47:00Z"}
+{"action":"upload wordlist to target and run Python-based dir brute on 192.168.3.1","phase":"enumeration","hypothesis":"broader directory scan reveals hidden PHP pages","ts":"2026-04-05T02:49:00Z"}
+{"action":"enumerate files in uploads/ directory on 192.168.3.1","phase":"enumeration","hypothesis":"uploads/ contains accessible files","ts":"2026-04-05T02:50:00Z"}
+{"action":"DNS queries against 192.168.3.1 for internal domains + WiFi rescan for AccessLink SSID","phase":"enumeration","hypothesis":"DNS resolves internal names; AccessLink is a new explorable SSID","ts":"2026-04-05T02:51:00Z"}
+{"action":"fresh WiFi scan on wlan3 to find AccessLink and any new SSIDs","phase":"enumeration","hypothesis":"AccessLink is a new SSID visible in fresh scan","ts":"2026-04-05T02:52:00Z"}
+{"action":"brute force login.php with admin username and targeted password list","phase":"exploitation","hypothesis":"admin password is common/guessable","ts":"2026-04-05T02:53:00Z"}
+{"action":"detailed SNMP walk on 10.129.18.57 checking all OIDs","phase":"enumeration","hypothesis":"SNMP has additional useful OIDs beyond initial walk","ts":"2026-04-05T02:54:00Z"}
+{"action":"cookie-preserving login attempt: GET session then POST with creds","phase":"exploitation","hypothesis":"login requires session cookie from GET before POST","ts":"2026-04-05T02:55:00Z"}
+{"action":"brute force login.php admin user with rockyou-combined via Python on target","phase":"exploitation","hypothesis":"admin password is in rockyou wordlist","ts":"2026-04-05T02:56:00Z"}
+{"action":"wpa_supplicant PEAP-MSCHAPv2 connect to AirTouch-Office with consultant creds","phase":"exploitation","hypothesis":"consultant:RxBlZhLmOkacNWScmZ6D authenticates to AirTouch-Office via PEAP-MSCHAPv2","ts":"2026-04-05T02:58:00Z"}
+{"action":"try multiple identity/password combos for AirTouch-Office PEAP-MSCHAPv2","phase":"exploitation","hypothesis":"other creds work for enterprise WiFi auth","ts":"2026-04-05T02:59:00Z"}
+{"action":"check router for source disclosure, .git, style.css content, UDP scan","phase":"enumeration","hypothesis":"router has additional attack surface beyond login.php","ts":"2026-04-05T03:01:00Z"}
+{"action":"check eaphammer for relay/proxy/hostile portal features","phase":"enumeration","hypothesis":"eaphammer can relay enterprise auth to capture creds or MITM traffic","ts":"2026-04-05T03:03:00Z"}
+{"action":"list captive portal templates, then run hostile portal on AirTouch-Office evil twin","phase":"exploitation","hypothesis":"hostile portal captures web creds from enterprise clients","ts":"2026-04-05T03:04:00Z"}
+{"action":"relaunch hostile portal after patching set_ipforward","phase":"exploitation","hypothesis":"hostile portal captures web creds from enterprise clients","ts":"2026-04-05T03:05:00Z"}
+{"action":"deauth AirTouch-Office clients to force reconnect to hostile portal + check portal logs","phase":"exploitation","hypothesis":"deauthed clients connect to open hostile portal and submit creds","ts":"2026-04-05T03:06:00Z"}
+{"action":"thorough filesystem search on container for hidden creds, certs, history, env vars","phase":"enumeration","hypothesis":"container has hidden creds or certificates","ts":"2026-04-05T03:09:00Z"}
+{"action":"test if 10.10.10.0/24 is reachable from tablets VLAN + check router for interfaces on that subnet","phase":"enumeration","hypothesis":"router routes to 10.10.10.0/24 from tablets VLAN","ts":"2026-04-05T03:10:00Z"}
+{"action":"nmap -sV -sC 10.10.10.2 — enumerate Corp computer","phase":"enumeration","hypothesis":"Corp computer has services with flags or new attack surface","ts":"2026-04-05T03:10:00Z"}
+{"action":"test router login with manager/tablet usernames and various passwords","phase":"exploitation","hypothesis":"router login uses 'manager' or 'tablet' as username","ts":"2026-04-05T03:12:00Z"}
+{"action":"SSH to 172.20.1.1 with consultant creds — was previously timed out, now port is open","phase":"exploitation","hypothesis":"consultant creds work on Docker host SSH","ts":"2026-04-05T03:13:00Z"}
+{"action":"try SSH to 192.168.3.1 with multiple credential combos","phase":"exploitation","hypothesis":"router SSH accepts different creds than web panel","ts":"2026-04-05T03:14:00Z"}
+{"action":"UDP scan router for SNMP/RADIUS + SNMP walk if open","phase":"enumeration","hypothesis":"router has SNMP or RADIUS on UDP","ts":"2026-04-05T03:15:00Z"}
+{"action":"test virtual hosts + Apache-specific attacks on 192.168.3.1","phase":"enumeration","hypothesis":"different Host header reveals different content or bypasses auth","ts":"2026-04-05T03:16:00Z"}
+{"action":"ARP spoof on Tablets VLAN to MITM HTTP traffic to router login page","phase":"exploitation","hypothesis":"tablets send cleartext HTTP creds to login.php — sniffable via ARP spoof","ts":"2026-04-05T03:20:00Z"}
+{"action":"ARP spoof tablet <-> gateway + sniff HTTP POST to capture router login creds","phase":"exploitation","hypothesis":"ARP spoofing captures cleartext HTTP creds from tablet to router login","ts":"2026-04-05T03:22:00Z"}
+{"action":"capture WiFi frames on monitor mode wlan4 ch6 then decrypt with airdecap-ng using PSK","phase":"exploitation","hypothesis":"passive WiFi decryption with known PSK reveals HTTP creds","ts":"2026-04-05T03:24:00Z"}
+{"action":"deauth tablet + capture handshake + decrypt traffic for HTTP creds","phase":"exploitation","hypothesis":"tablet handshake capture enables WPA decryption of HTTP traffic","ts":"2026-04-05T03:26:00Z"}
+{"action":"try UserRole=admin cookie to escalate to admin in router panel","phase":"exploitation","hypothesis":"UserRole cookie controls auth — changing to admin escalates","ts":"2026-04-05T03:29:00Z"}
+{"action":"upload PHP webshell via file upload form on router panel","phase":"exploitation","hypothesis":"file upload + .phtml extension gives RCE on router","ts":"2026-04-05T03:30:00Z"}
+{"action":"enumerate web app source code and database for creds on router","phase":"post-exploitation","hypothesis":"web source has hardcoded creds or DB with password hashes","ts":"2026-04-05T03:31:00Z"}
+{"action":"SSH to 10.10.10.1 as remote via webshell proxy","phase":"post-exploitation","hypothesis":"remote creds give SSH access to AirTouch-Office AP","ts":"2026-04-05T03:33:00Z"}
+{"action":"extract real CA+server certs from router, deploy evil twin with legitimate certs","phase":"exploitation","hypothesis":"real certs pass TLS validation enabling credential capture","ts":"2026-04-05T03:35:00Z"}
+{"action":"relaunch evil twin with corrected fullchain.pem (cert+key+ca)","phase":"exploitation","hypothesis":"real certs with correct format pass TLS validation","ts":"2026-04-05T03:37:00Z"}
+{"action":"crack MSCHAPv2 hash for r4ulcl with john/hashcat","phase":"exploitation","hypothesis":"MSCHAPv2 hash crackable with rockyou","ts":"2026-04-05T03:40:00Z"}
+{"action":"connect to AirTouch-Office with r4ulcl:laboratory via wpa_supplicant PEAP-MSCHAPv2","phase":"exploitation","hypothesis":"enterprise creds give access to Corp VLAN","ts":"2026-04-05T03:42:00Z"}
+{"action":"nmap + SSH to 10.10.10.2 from Corp VLAN","phase":"post-exploitation","hypothesis":"Corp computer accessible from Corp VLAN with known creds","ts":"2026-04-05T03:49:00Z"}
+{"action":"SSH as admin to 10.10.10.1 with xMJpzXt4D9ouMuL3JJsMriF7KZozm7","phase":"post-exploitation","hypothesis":"admin creds give sudo/root on AirTouch-AP-MGT","ts":"2026-04-05T03:54:00Z"}

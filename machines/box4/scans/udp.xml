@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<?xml-stylesheet href="file:///usr/share/nmap/nmap.xsl" type="text/xsl"?>
+<!-- Nmap 7.98 scan initiated Sun Apr  5 02:10:17 2026 as: /usr/lib/nmap/nmap -&#45;privileged -sU -&#45;top-ports 50 -&#45;min-rate 1000 -oA /htb/machines/box4/scans/udp 10.129.18.57 -->
+<nmaprun scanner="nmap" args="/usr/lib/nmap/nmap -&#45;privileged -sU -&#45;top-ports 50 -&#45;min-rate 1000 -oA /htb/machines/box4/scans/udp 10.129.18.57" start="1775355017" startstr="Sun Apr  5 02:10:17 2026" version="7.98" xmloutputversion="1.05">
+<scaninfo type="udp" protocol="udp" numservices="50" services="7,53,67-69,80,111,123,135-139,161-162,445,500,514,518,520,593,626,631,996-999,1025-1027,1433-1434,1645-1646,1701,1812,1900,2048-2049,2222,3283,3456,4500,5060,5353,20031,32768,49152-49154"/>
+<verbose level="0"/>
+<debugging level="0"/>
+<hosthint><status state="up" reason="unknown-response" reason_ttl="0"/>
+<address addr="10.129.18.57" addrtype="ipv4"/>
+<hostnames>
+</hostnames>
+</hosthint>
+<host starttime="1775355018" endtime="1775355018"><status state="up" reason="echo-reply" reason_ttl="63"/>
+<address addr="10.129.18.57" addrtype="ipv4"/>
+<hostnames>
+</hostnames>
+<ports><extraports state="open|filtered" count="45">
+<extrareasons reason="no-response" count="45" proto="udp" ports="7,53,67-69,80,111,123,135-139,162,445,500,514,518,520,593,626,631,996-999,1025-1027,1433-1434,1645-1646,1701,1900,2049,2222,3283,3456,5060,20031,32768,49152-49154"/>
+</extraports>
+<port protocol="udp" portid="161"><state state="open" reason="udp-response" reason_ttl="62"/><service name="snmp" method="table" conf="3"/></port>
+<port protocol="udp" portid="1812"><state state="closed" reason="port-unreach" reason_ttl="63"/><service name="radius" method="table" conf="3"/></port>
+<port protocol="udp" portid="2048"><state state="closed" reason="port-unreach" reason_ttl="63"/><service name="dls-monitor" method="table" conf="3"/></port>
+<port protocol="udp" portid="4500"><state state="closed" reason="port-unreach" reason_ttl="63"/><service name="nat-t-ike" method="table" conf="3"/></port>
+<port protocol="udp" portid="5353"><state state="closed" reason="port-unreach" reason_ttl="63"/><service name="zeroconf" method="table" conf="3"/></port>
+</ports>
+<times srtt="20333" rttvar="7106" to="100000"/>
+</host>
+<runstats><finished time="1775355018" timestr="Sun Apr  5 02:10:18 2026" summary="Nmap done at Sun Apr  5 02:10:18 2026; 1 IP address (1 host up) scanned in 1.38 seconds" elapsed="1.38" exit="success"/><hosts up="1" down="0" total="1"/>
+</runstats>
+</nmaprun>

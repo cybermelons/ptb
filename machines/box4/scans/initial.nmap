@@ -1,0 +1,14 @@
+# Nmap 7.98 scan initiated Sun Apr  5 02:09:43 2026 as: /usr/lib/nmap/nmap --privileged -sC -sV -oA /htb/machines/box4/scans/initial 10.129.18.57
+Nmap scan report for 10.129.18.57
+Host is up (0.023s latency).
+Not shown: 999 closed tcp ports (reset)
+PORT   STATE SERVICE VERSION
+22/tcp open  ssh     OpenSSH 8.2p1 Ubuntu 4ubuntu0.11 (Ubuntu Linux; protocol 2.0)
+| ssh-hostkey: 
+|   3072 bd:90:00:15:cf:4b:da:cb:c9:24:05:2b:01:ac:dc:3b (RSA)
+|   256 6e:e2:44:70:3c:6b:00:57:16:66:2f:37:58:be:f5:c0 (ECDSA)
+|_  256 ad:d5:d5:f0:0b:af:b2:11:67:5b:07:5c:8e:85:76:76 (ED25519)
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+# Nmap done at Sun Apr  5 02:09:47 2026 -- 1 IP address (1 host up) scanned in 4.09 seconds

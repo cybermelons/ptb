@@ -1,0 +1,5 @@
+{"branch":"Evil twin AirTouch-Office with eaphammer to capture 802.1X creds","rationale":"WPA2-Enterprise, eaphammer pre-installed, 7 wlan interfaces available","priority":"critical","added":"2026-04-05T02:13:00Z"}
+{"branch":"Capture WPA handshake on AirTouch-Internet and crack PSK","rationale":"WPA-PSK network, may provide network access","priority":"high","added":"2026-04-05T02:13:00Z"}
+{"branch":"Find real CA cert on container to sign evil twin server cert","rationale":"clients validate CA — if we sign with the real CA, TLS handshake succeeds","priority":"critical","added":"2026-04-05T02:21:00Z"}
+{"branch":"Search container for WiFi configs, radius secrets, or stored creds","rationale":"container may have config files with useful credentials","priority":"high","added":"2026-04-05T02:21:00Z"}
+{"branch":"Capture WPA handshake on AirTouch-Internet PSK network","rationale":"alternative path if enterprise evil twin is blocked","priority":"medium","added":"2026-04-05T02:21:00Z"}

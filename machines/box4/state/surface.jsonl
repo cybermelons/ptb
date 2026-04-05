@@ -1,0 +1,16 @@
+{"type":"host","ip":"10.129.18.57","os":"Ubuntu","discovered_by":"nmap -sC -sV","ts":"2026-04-05T02:09:00Z"}
+{"type":"service","ip":"10.129.18.57","port":22,"proto":"tcp","service":"ssh","product":"OpenSSH","version":"8.2p1 Ubuntu 4ubuntu0.11","discovered_by":"nmap -sV","ts":"2026-04-05T02:09:00Z"}
+{"type":"service","ip":"10.129.18.57","port":161,"proto":"udp","service":"snmp","discovered_by":"nmap -sU","ts":"2026-04-05T02:10:00Z"}
+{"type":"config","ip":"10.129.18.57","port":161,"detail":"sysDescr leaks password: RxBlZhLmOkacNWScmZ6D (default consultant password)","discovered_by":"snmpwalk -v2c -c public","ts":"2026-04-05T02:11:00Z"}
+{"type":"config","ip":"10.129.18.57","port":161,"detail":"contact: admin@AirTouch.htb, hostname: Consultant","discovered_by":"snmpwalk","ts":"2026-04-05T02:11:00Z"}
+{"type":"config","ip":"10.129.18.57","detail":"Docker container 172.20.1.2/24, hostname AirTouch-Consultant, gateway 172.20.1.1","discovered_by":"ip addr/route inside container","ts":"2026-04-05T02:12:00Z"}
+{"type":"config","ip":"10.129.18.57","detail":"7 wireless interfaces (wlan0-wlan6), all DOWN, eaphammer installed in /root/eaphammer","discovered_by":"iwconfig, ls /root/eaphammer","ts":"2026-04-05T02:12:00Z"}
+{"type":"service","ip":"10.129.18.57","detail":"WiFi AP: AirTouch-Office, WPA2-Enterprise 802.1X, BSSID ac:8b:a9:aa:3f:d2 + ac:8b:a9:f3:a1:13, ch44 5GHz","discovered_by":"iw dev wlan0 scan","ts":"2026-04-05T02:13:00Z"}
+{"type":"service","ip":"10.129.18.57","detail":"WiFi AP: AirTouch-Internet, WPA-PSK, BSSID f0:9f:c2:a3:f1:a7, ch6 2.4GHz","discovered_by":"iw dev wlan0 scan","ts":"2026-04-05T02:13:00Z"}
+{"type":"config","ip":"192.168.3.84","detail":"Connected to AirTouch-Internet WiFi, got DHCP lease 192.168.3.84/24 on wlan2","discovered_by":"wpa_supplicant + dhclient on AirTouch-Internet PSK='challenge'","ts":"2026-04-05T02:43:00Z"}
+{"type":"host","ip":"192.168.3.1","hostname":"AirTouch-Internet-Gateway","os":"Ubuntu","mac":"F0:9F:C2:A3:F1:A7","discovered_by":"nmap -sn 192.168.3.0/24","ts":"2026-04-05T02:44:00Z"}
+{"type":"service","ip":"192.168.3.1","port":22,"proto":"tcp","service":"ssh","product":"OpenSSH","version":"8.2p1 Ubuntu 4ubuntu0.11","discovered_by":"nmap -sV","ts":"2026-04-05T02:44:00Z"}
+{"type":"service","ip":"192.168.3.1","port":53,"proto":"tcp","service":"dns","product":"dnsmasq","version":"2.90","discovered_by":"nmap -sV","ts":"2026-04-05T02:44:00Z"}
+{"type":"service","ip":"192.168.3.1","port":80,"proto":"tcp","service":"http","product":"Apache httpd","version":"2.4.41","detail":"WiFi Router Configuration login.php, PHP with PHPSESSID","discovered_by":"nmap -sC -sV","ts":"2026-04-05T02:44:00Z"}
+{"type":"config","detail":"Network diagram found: 3 VLANs - Consultant(172.20.1.0/24), Tablets(192.168.3.0/24), Corp(10.10.10.0/24). NAT: :22->172.20.1.2:22, :161->172.20.1.2:161. AirTouch-Internet=Tablets VLAN, AirTouch-Office=Corp VLAN. Corp VLAN 10.10.10.0/24 has 'Corporate computer' and is only reachable via AirTouch-Office.","discovered_by":"diagram-net.png in /home/consultant/","ts":"2026-04-05T03:09:00Z"}
+{"type":"host","ip":"10.10.10.2","detail":"Corporate computer on Corp VLAN, reachable from Tablets VLAN via router","discovered_by":"nmap -sn 10.10.10.0/24 from wlan2","ts":"2026-04-05T03:10:00Z"}

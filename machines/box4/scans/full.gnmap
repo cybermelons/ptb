@@ -1,0 +1,4 @@
+# Nmap 7.98 scan initiated Sun Apr  5 02:09:56 2026 as: /usr/lib/nmap/nmap --privileged -sS -p- --min-rate 3000 -oA /htb/machines/box4/scans/full 10.129.18.57
+Host: 10.129.18.57 ()	Status: Up
+Host: 10.129.18.57 ()	Ports: 22/open/tcp//ssh///	Ignored State: closed (65534)
+# Nmap done at Sun Apr  5 02:10:11 2026 -- 1 IP address (1 host up) scanned in 15.04 seconds

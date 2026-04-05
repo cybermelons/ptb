@@ -1,0 +1,12 @@
+# Nmap 7.98 scan initiated Sun Apr  5 02:10:17 2026 as: /usr/lib/nmap/nmap --privileged -sU --top-ports 50 --min-rate 1000 -oA /htb/machines/box4/scans/udp 10.129.18.57
+Nmap scan report for 10.129.18.57
+Host is up (0.020s latency).
+Not shown: 45 open|filtered udp ports (no-response)
+PORT     STATE  SERVICE
+161/udp  open   snmp
+1812/udp closed radius
+2048/udp closed dls-monitor
+4500/udp closed nat-t-ike
+5353/udp closed zeroconf
+
+# Nmap done at Sun Apr  5 02:10:18 2026 -- 1 IP address (1 host up) scanned in 1.38 seconds
