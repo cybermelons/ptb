@@ -1,0 +1,7 @@
+{"type":"host","ip":"10.129.18.36","hostname":"pterodactyl.htb","discovered_by":"nmap -sC -sV","ts":"2026-04-04T23:27:33Z"}
+{"type":"service","ip":"10.129.18.36","port":22,"proto":"tcp","service":"ssh","product":"OpenSSH","version":"9.6","discovered_by":"nmap -sC -sV","ts":"2026-04-04T23:27:33Z"}
+{"type":"service","ip":"10.129.18.36","port":80,"proto":"tcp","service":"http","product":"nginx","version":"1.21.5","discovered_by":"nmap -sC -sV","ts":"2026-04-04T23:27:33Z"}
+{"type":"service","ip":"10.129.18.36","port":80,"proto":"tcp","service":"http","product":"Pterodactyl Panel","version":"1.11.10","hostname":"panel.pterodactyl.htb","discovered_by":"changelog.txt + vhost enum","ts":"2026-04-04T23:29:36Z"}
+{"type":"tech","ip":"10.129.18.36","port":80,"tech":"PHP 8.4.8, register_argc_argv=On, no disable_functions, no open_basedir, PEAR installed at /usr/share/php/PEAR","discovered_by":"phpinfo.php","ts":"2026-04-04T23:29:36Z"}
+{"type":"tech","ip":"10.129.18.36","port":80,"tech":"MariaDB 11.8.3","discovered_by":"changelog.txt","ts":"2026-04-04T23:29:36Z"}
+{"type":"tech","ip":"10.129.18.36","port":80,"tech":"Laravel framework (Pterodactyl Panel)","discovered_by":"cookies XSRF-TOKEN, pterodactyl_session","ts":"2026-04-04T23:29:36Z"}

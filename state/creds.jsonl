@@ -1,0 +1,5 @@
+{"id":"cred-001","type":"password","username":"pterodactyl","secret":"PteraPanel","source":"/var/www/pterodactyl/.env","host":"10.129.18.36","service":"mysql","ts":"2026-04-04T23:38:29Z"}
+{"id":"cred-002","type":"app_key","username":"","secret":"base64:UaThTPQnUjrrK61o+Luk7P9o4hM+gl4UiMJqcbTSThY=","source":"/var/www/pterodactyl/.env","host":"10.129.18.36","service":"laravel","ts":"2026-04-04T23:38:29Z"}
+{"id":"cred-003","type":"salt","username":"","secret":"pKkOnx0IzJvaUXKWt2PK","source":"/var/www/pterodactyl/.env","host":"10.129.18.36","service":"hashids","ts":"2026-04-04T23:38:29Z"}
+{"id":"cred-004","type":"api_token","username":"wings_daemon","secret":"nrV4yF4x7e0KkVaab4ptA1XZJwlExVJzUJnWqOeczWfTZnOb5avVzE9CynifW4ax","token_id":"fyqnJBhstNPUR8lN","source":"/etc/pterodactyl/config.yml","host":"10.129.18.36","service":"wings","ts":"2026-04-04T23:44:32Z"}
+{"id":"cred-005","type":"password","username":"phileasfogg3","secret":"!QAZ2wsx","source":"bcrypt hash from panel DB, cracked with john","host":"10.129.18.36","service":"ssh","ts":"2026-04-04T23:52:51Z"}
