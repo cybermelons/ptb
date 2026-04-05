@@ -117,6 +117,22 @@ Operational knowledge lives in skills. Load the relevant skill before acting:
    am I trying variations of the SAME thing?
 ```
 
+## Hook Enforcement
+
+The hooks in `.claude/hooks/` mechanically enforce reasoning discipline. They are not suggestions.
+
+**How it works:** Exploitation commands (curl, python3, sqlmap, etc.) require a registered hypothesis. Recon and state management are always free. If you're blocked, write to state — that's the only gate.
+
+**Gate 1 — Hypothesis required:** Before running exploit commands, set `current_hypothesis` in `/tmp/.claude_reasoning_state.json`. No hypothesis = blocked.
+
+**Gate 2 — Grind limit (5 commands):** After 5 exploit commands without writing to state files (tested.jsonl, notes.md, etc.), you're blocked. Log your result (confirmed/denied/inconclusive), then continue.
+
+**Gate 3 — Hard block re-entry:** If you logged a hard block in state, commands matching that technique category are blocked. To retry, first log WHY the block no longer applies.
+
+**What's always free:** git, ls, cat, recon tools (nmap, gobuster, dig), and any write to state files. Writing to state resets the grind counter.
+
+**If blocked:** Don't fight it. Write your hypothesis or result to state. That's what you should have been doing anyway.
+
 ## Anti-Patterns
 
 - Re-scanning hosts you already have data for — check `surface.jsonl` first
