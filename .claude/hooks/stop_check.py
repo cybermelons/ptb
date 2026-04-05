@@ -38,10 +38,8 @@ def main():
 
     if warnings:
         output = {
-            'hookSpecificOutput': {
-                'hookEventName': 'Stop',
-                'additionalContext': ' | '.join(warnings),
-            }
+            'decision': 'approve',
+            'reason': ' | '.join(warnings),
         }
         json.dump(output, sys.stdout)
 
