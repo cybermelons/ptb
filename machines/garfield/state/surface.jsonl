@@ -1,0 +1,27 @@
+{"type":"host","ip":"10.129.16.228","hostname":"DC01.garfield.htb","os":"Windows Server 2019 (10.0.17763)","domain":"GARFIELD","role":"Domain Controller","discovered_by":"nmap -sC -sV","ts":"2026-04-05T23:19:00Z"}
+{"type":"service","ip":"10.129.16.228","port":53,"proto":"tcp","service":"dns","product":"Simple DNS Plus","discovered_by":"nmap","ts":"2026-04-05T23:19:00Z"}
+{"type":"service","ip":"10.129.16.228","port":88,"proto":"tcp","service":"kerberos","product":"Microsoft Windows Kerberos","discovered_by":"nmap","ts":"2026-04-05T23:19:00Z"}
+{"type":"service","ip":"10.129.16.228","port":445,"proto":"tcp","service":"smb","detail":"SMB signing required","discovered_by":"nmap","ts":"2026-04-05T23:19:00Z"}
+{"type":"service","ip":"10.129.16.228","port":389,"proto":"tcp","service":"ldap","product":"AD LDAP","detail":"Domain: garfield.htb","discovered_by":"nmap","ts":"2026-04-05T23:19:00Z"}
+{"type":"service","ip":"10.129.16.228","port":3389,"proto":"tcp","service":"rdp","product":"Microsoft Terminal Services","discovered_by":"nmap","ts":"2026-04-05T23:19:00Z"}
+{"type":"service","ip":"10.129.16.228","port":5985,"proto":"tcp","service":"winrm","product":"Microsoft HTTPAPI","discovered_by":"nmap","ts":"2026-04-05T23:19:00Z"}
+{"type":"config","detail":"Clock skew +8h00m from scanner. SMB signing required (no relay).","discovered_by":"nmap scripts","ts":"2026-04-05T23:19:00Z"}
+{"type":"user","domain":"GARFIELD","username":"j.arbuckle","status":"active","discovered_by":"Kerberos enum (KDC_ERR_PREAUTH_FAILED)","ts":"2026-04-05T23:23:00Z"}
+{"type":"user","domain":"GARFIELD","username":"l.wilson","status":"active","discovered_by":"Kerberos enum (KDC_ERR_PREAUTH_FAILED)","ts":"2026-04-05T23:23:00Z"}
+{"type":"user","domain":"GARFIELD","username":"administrator","status":"active","discovered_by":"Kerberos enum (KDC_ERR_PREAUTH_FAILED)","ts":"2026-04-05T23:23:00Z"}
+{"type":"config","detail":"DC has second IP 192.168.100.1 — internal network 192.168.100.0/24 exists","discovered_by":"dig ANY garfield.htb","ts":"2026-04-05T23:26:00Z"}
+{"type":"config","detail":"DC IPv6: dead:beef::605d:7d67:bb30:a026","discovered_by":"dig ANY garfield.htb","ts":"2026-04-05T23:26:00Z"}
+{"type":"user","domain":"GARFIELD","username":"l.wilson","status":"active","groups":["Remote Management Users","Remote Desktop Users"],"discovered_by":"LDAP auth enum","ts":"2026-04-06T00:05:00Z"}
+{"type":"user","domain":"GARFIELD","username":"l.wilson_adm","status":"active","groups":["Tier 1","Remote Management Users","Remote Desktop Users"],"discovered_by":"LDAP auth enum","ts":"2026-04-06T00:05:00Z"}
+{"type":"user","domain":"GARFIELD","username":"krbtgt_8245","status":"active","detail":"RODC krbtgt account","discovered_by":"LDAP auth enum","ts":"2026-04-06T00:05:00Z"}
+{"type":"group","domain":"GARFIELD","name":"IT Support","members":["j.arbuckle"],"discovered_by":"LDAP auth enum","ts":"2026-04-06T00:05:00Z"}
+{"type":"group","domain":"GARFIELD","name":"Tier 1","members":["l.wilson_adm"],"discovered_by":"LDAP auth enum","ts":"2026-04-06T00:05:00Z"}
+{"type":"host","ip":"unknown","hostname":"RODC01.garfield.htb","os":"Windows Server 2019 Datacenter","role":"Read-Only Domain Controller","detail":"msDS-RevealedUsers includes Administrator and krbtgt_8245. RevealOnDemand=Allowed RODC PRG. NeverReveal includes Administrators group but Administrator user IS revealed.","discovered_by":"LDAP auth enum","ts":"2026-04-06T00:05:00Z"}
+{"type":"config","detail":"RODC01 has Administrator password cached (msDS-RevealedUsers). RODC key=krbtgt_8245.","discovered_by":"LDAP RODC replication attrs","ts":"2026-04-06T00:05:00Z"}
+{"type":"acl","source":"l.wilson","target":"l.wilson_adm","right":"ForceChangePassword","discovered_by":"bloodhound ACEs","ts":"2026-04-06T00:10:00Z"}
+{"type":"acl","source":"l.wilson_adm","target":"RODC01$","right":"ForceChangePassword+WriteAccountRestrictions","discovered_by":"bloodhound ACEs","ts":"2026-04-06T00:10:00Z"}
+{"type":"acl","source":"RODC01$","target":"krbtgt_8245","right":"ForceChangePassword","discovered_by":"bloodhound ACEs","ts":"2026-04-06T00:10:00Z"}
+{"type":"host","ip":"192.168.100.2","hostname":"RODC01.garfield.htb","os":"Windows Server 2019 Datacenter","role":"Read-Only Domain Controller","discovered_by":"dig RODC01.garfield.htb","ts":"2026-04-06T00:12:00Z"}
+{"type":"config","detail":"Password policy: complexity OFF, no lockout (LockoutBadCount=0), min length 7, NoLMHash=1","discovered_by":"GPO GptTmpl.inf","ts":"2026-04-06T00:44:00Z"}
+{"type":"acl","source":"IT Support (j.arbuckle)","target":"Allowed RODC Password Replication Group","right":"WriteProp(member)+ReadProp(member)","detail":"GUID bf9679a8 = member attribute. j.arbuckle can add users to Allowed RODC PRG. Bloodhound Python MISSED this ACE.","discovered_by":"raw LDAP nTSecurityDescriptor with SD_FLAGS","ts":"2026-04-06T08:28:00Z"}
+{"type":"acl","source":"IT Support (j.arbuckle)","target":"all users in Users container","right":"WriteProp(scriptPath) + ReadProp(scriptPath)","detail":"GUID bf9679a8 = scriptPath NOT member. j.arbuckle can set logon scripts on ANY user in CN=Users. This enables NTLM hash capture by pointing l.wilson scriptPath to our malicious bat.","discovered_by":"schema GUID lookup corrected bf9679a8=scriptPath","ts":"2026-04-06T08:32:00Z"}

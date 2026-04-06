@@ -1,0 +1,7 @@
+# Nmap 7.98 scan initiated Sun Apr  5 09:42:57 2026 as: /usr/lib/nmap/nmap --privileged -Pn -p- --min-rate 3000 -oA /htb/machines/garfield/scans/full 10.129.16.151
+Nmap scan report for 10.129.16.151
+Host is up (0.090s latency).
+All 65535 scanned ports on 10.129.16.151 are in ignored states.
+Not shown: 65490 filtered tcp ports (no-response), 45 filtered tcp ports (host-unreach)
+
+# Nmap done at Sun Apr  5 09:43:42 2026 -- 1 IP address (1 host up) scanned in 44.41 seconds

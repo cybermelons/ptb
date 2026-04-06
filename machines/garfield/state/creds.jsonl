@@ -1,0 +1,1 @@
+{"id":"cred-001","type":"password","username":"j.arbuckle","secret":"Th1sD4mnC4t!@1978","domain":"garfield.htb","source":"HTB provided creds","context":"SMB auth confirmed, has ADMIN$/C$ access","ts":"2026-04-05T23:29:00Z"}

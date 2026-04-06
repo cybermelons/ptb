@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<?xml-stylesheet href="file:///usr/share/nmap/nmap.xsl" type="text/xsl"?>
+<!-- Nmap 7.98 scan initiated Sun Apr  5 09:42:57 2026 as: /usr/lib/nmap/nmap -&#45;privileged -Pn -p- -&#45;min-rate 3000 -oA /htb/machines/garfield/scans/full 10.129.16.151 -->
+<nmaprun scanner="nmap" args="/usr/lib/nmap/nmap -&#45;privileged -Pn -p- -&#45;min-rate 3000 -oA /htb/machines/garfield/scans/full 10.129.16.151" start="1775382177" startstr="Sun Apr  5 09:42:57 2026" version="7.98" xmloutputversion="1.05">
+<scaninfo type="syn" protocol="tcp" numservices="65535" services="1-65535"/>
+<verbose level="0"/>
+<debugging level="0"/>
+<host starttime="1775382178" endtime="1775382222"><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="10.129.16.151" addrtype="ipv4"/>
+<hostnames>
+</hostnames>
+<ports><extraports state="filtered" count="65535">
+<extrareasons reason="no-response" count="65490" proto="tcp" ports="1-2059,2061-2983,2985-5623,5625-6091,6093-6677,6679-7584,7586-9029,9031-9900,9902-11434,11436-12326,12328-14512,14514-20581,20583-21568,21570-21759,21761-21924,21926-24510,24512-29893,29895-30397,30399-31730,31732-33103,33105-34801,34803-35245,35247-35274,35276-39675,39677-43105,43107-44027,44029-44389,44391-45472,45474-45722,45724-45942,45944-46213,46215-48916,48918-49017,49019-52173,52175-52577,52579-53640,53642-53788,53790-53806,53808-57039,57041-58269,58271-60065,60067-60481,60483-61616,61618-61768,61770-65275,65277-65535"/>
+<extrareasons reason="host-unreach" count="45" proto="tcp" ports="2060,2984,5624,6092,6678,7585,9030,9901,11435,12327,14513,20582,21569,21760,21925,24511,29894,30398,31731,33104,34802,35246,35275,39676,43106,44028,44390,45473,45723,45943,46214,48917,49018,52174,52578,53641,53789,53807,57040,58270,60066,60482,61617,61769,65276"/>
+</extraports>
+</ports>
+<times srtt="90116" rttvar="1272" to="100000"/>
+</host>
+<runstats><finished time="1775382222" timestr="Sun Apr  5 09:43:42 2026" summary="Nmap done at Sun Apr  5 09:43:42 2026; 1 IP address (1 host up) scanned in 44.41 seconds" elapsed="44.41" exit="success"/><hosts up="1" down="0" total="1"/>
+</runstats>
+</nmaprun>

