@@ -1,0 +1,4 @@
+# Nmap 7.98 scan initiated Mon Apr  6 10:27:37 2026 as: /usr/lib/nmap/nmap --privileged -Pn -p- --min-rate 5000 -oA /htb/machines/amazon-fortress/scans/full 10.13.37.15
+Host: 10.13.37.15 ()	Status: Up
+Host: 10.13.37.15 ()	Ports: 	Ignored State: filtered (65535)
+# Nmap done at Mon Apr  6 10:28:05 2026 -- 1 IP address (1 host up) scanned in 28.11 seconds

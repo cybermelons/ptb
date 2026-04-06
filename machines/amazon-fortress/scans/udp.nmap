@@ -1,0 +1,27 @@
+# Nmap 7.98 scan initiated Mon Apr  6 10:27:55 2026 as: /usr/lib/nmap/nmap -Pn -sU --top-ports 20 -oA /htb/machines/amazon-fortress/scans/udp 10.13.37.15
+Nmap scan report for 10.13.37.15
+Host is up.
+
+PORT      STATE         SERVICE
+53/udp    open|filtered domain
+67/udp    open|filtered dhcps
+68/udp    open|filtered dhcpc
+69/udp    open|filtered tftp
+123/udp   open|filtered ntp
+135/udp   open|filtered msrpc
+137/udp   open|filtered netbios-ns
+138/udp   open|filtered netbios-dgm
+139/udp   open|filtered netbios-ssn
+161/udp   open|filtered snmp
+162/udp   open|filtered snmptrap
+445/udp   open|filtered microsoft-ds
+500/udp   open|filtered isakmp
+514/udp   open|filtered syslog
+520/udp   open|filtered route
+631/udp   open|filtered ipp
+1434/udp  open|filtered ms-sql-m
+1900/udp  open|filtered upnp
+4500/udp  open|filtered nat-t-ike
+49152/udp open|filtered unknown
+
+# Nmap done at Mon Apr  6 10:28:01 2026 -- 1 IP address (1 host up) scanned in 5.72 seconds

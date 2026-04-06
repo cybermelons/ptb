@@ -1,0 +1,5 @@
+{"branch":"Re-scan all TCP ports after machine is spawned on HTB platform","rationale":"All 65535 ports currently filtered — machine appears offline","priority":"critical","added":"2026-04-06T10:30:00Z"}
+{"branch":"Check for web services (HTTP/HTTPS) once machine is live","rationale":"Box name suggests cloud/AWS themed — likely has web component","priority":"high","added":"2026-04-06T10:30:00Z"}
+{"branch":"Enumerate any cloud-related services (S3, metadata endpoint)","rationale":"Amazon Fortress name hints at AWS services","priority":"high","added":"2026-04-06T10:30:00Z"}
+{"branch":"Check for hostnames/vhosts in TLS certs or HTTP responses","rationale":"May need /etc/hosts entries for virtual hosting","priority":"medium","added":"2026-04-06T10:30:00Z"}
+{"branch":"UDP service enumeration (DNS, SNMP) once machine is live","rationale":"UDP scan was inconclusive — all open|filtered","priority":"medium","added":"2026-04-06T10:30:00Z"}
