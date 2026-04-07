@@ -4,3 +4,4 @@
 {"id":"cred-004","type":"password","username":"RODC01$","secret":"NewRodcPass123!","domain":"garfield.htb","source":"ForceChangePassword via l.wilson_adm","ts":"2026-04-07T11:01:00Z"}
 {"id":"cred-005","type":"password","username":"krbtgt_8245","secret":"KrbtgtPass123!","domain":"garfield.htb","source":"ForceChangePassword via RODC01$","ts":"2026-04-07T11:01:00Z"}
 {"id":"cred-004-updated","type":"password","username":"RODC01$","secret":"N3wR0dcP@ss!","domain":"garfield.htb","source":"rpcclient setuserinfo2 - updated to match planner","ts":"2026-04-07T11:21:00Z"}
+{"id": "cred-auto-1775589991", "type": "password", "username": "l.wilson_adm", "secret": "P@ssw0rd2026!", "host": "10.129.17.158", "source": "Confirmed working on fresh instance via LDAP bind - scriptPath chain viable", "ts": "2026-04-07T19:26:31.898061+00:00"}

