@@ -145,6 +145,34 @@ The hooks in `.claude/hooks/` mechanically enforce reasoning discipline. They ar
 
 Preserve in order: (1) current phase and branch, (2) surface.jsonl summary, (3) findings, (4) unexplored queue, (5) credentials. Conversation is lowest priority.
 
+## Orchestrator Engine
+
+For autonomous runs, use `pentest-engine/engine.py` instead of free-form hacking. The engine runs Claude Code on rails — each iteration is a fresh `claude -p` call with no context carryover, preventing drift.
+
+```bash
+# Launch against a box
+python3 pentest-engine/engine.py --target <IP> --workspace machines/<name> --max-iterations 20
+
+# Resume from existing state
+python3 pentest-engine/engine.py --target <IP> --workspace machines/<name> --resume
+
+# Inject operator hints
+python3 pentest-engine/engine.py --target <IP> --workspace machines/<name> --hint "box theme suggests AWS"
+```
+
+**Architecture:** Python loop (deterministic) calls Claude twice per iteration:
+1. **Planner** — reads state files, picks ONE next action. Never sees raw tool output.
+2. **Executor** — runs the task, returns structured JSON findings.
+
+**Code enforces:** dead branch tracking (3 denials = dead), hard block categories, phase gates (no exploit without enum), retry limits. The planner can't drift because it has no memory — just fresh state every time.
+
+**Monitor from another session:**
+```bash
+tail -f machines/<name>/logs/orchestrator.jsonl | jq .
+```
+
+**State files are shared** — the engine reads/writes the same jsonl files (surface, tested, unexplored, creds, findings) used by manual sessions. You can switch between engine and manual seamlessly.
+
 # Environment
 
 Running inside an isolated Kali Linux Docker container.
