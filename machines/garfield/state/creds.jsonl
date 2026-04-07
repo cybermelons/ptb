@@ -1,2 +1,5 @@
 {"id":"cred-001","type":"password","username":"j.arbuckle","secret":"Th1sD4mnC4t!@1978","domain":"garfield.htb","source":"HTB provided creds","context":"SMB auth confirmed, has ADMIN$/C$ access","ts":"2026-04-05T23:29:00Z"}
 {"id":"cred-003","type":"password","username":"l.wilson_adm","secret":"P@ssw0rd2026!","domain":"garfield.htb","source":"ForceChangePassword via scriptPath bat execution as l.wilson","ts":"2026-04-07T10:51:00Z"}
+{"id": "cred-auto-1775559748", "type": "password", "username": "RODC01$", "secret": "N3wR0dcP@ss!", "host": "", "source": "ForceChangePassword by l.wilson_adm via bloodyAD", "ts": "2026-04-07T11:02:28.606288+00:00"}
+{"id":"cred-004","type":"password","username":"RODC01$","secret":"NewRodcPass123!","domain":"garfield.htb","source":"ForceChangePassword via l.wilson_adm","ts":"2026-04-07T11:01:00Z"}
+{"id":"cred-005","type":"password","username":"krbtgt_8245","secret":"KrbtgtPass123!","domain":"garfield.htb","source":"ForceChangePassword via RODC01$","ts":"2026-04-07T11:01:00Z"}

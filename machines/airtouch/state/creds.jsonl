@@ -1,0 +1,2 @@
+{"id":"cred-001","type":"password","username":"consultant","secret":"RxBlZhLmOkacNWScmZ6D","source":"SNMP sysDescr OID 1.3.6.1.2.1.1.1.0","host":"10.129.244.98","ts":"2026-04-05T01:18:00Z"}
+{"id":"cred-002","type":"wifi-psk","ssid":"AirTouch-Internet","secret":"challenge","source":"aircrack-ng handshake crack","host":"f0:9f:c2:a3:f1:a7","ts":"2026-04-05T01:23:00Z"}

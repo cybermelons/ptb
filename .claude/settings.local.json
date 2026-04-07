@@ -1,4 +1,27 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(openvpn --config /htb/machines_us-4.ovpn --daemon)",
+      "Bash(ip a:*)",
+      "Bash(git remote:*)",
+      "Bash(curl --connect-timeout 3 --max-time 5 -sg \"http://portal.variatype.htb/files/s.php?c=cat+/etc/hostname\")",
+      "Bash(curl --connect-timeout 3 --max-time 5 -sg \"http://portal.variatype.htb/files/s.php?c=ls+/tmp/sb\")",
+      "Bash(curl --connect-timeout 3 --max-time 5 -sg \"http://portal.variatype.htb/files/s.php?c=python3+-c+%22print\\(42\\)%22\")",
+      "Bash(curl:*)",
+      "Bash(sudo mkdir:*)",
+      "Bash(sudo chmod:*)",
+      "Bash(chmod +x:*)",
+      "Bash(/htb/.claude/hooks/action-log.sh)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(python3 -c \"import json; print\\('ok'\\)\")",
+      "Bash(sudo apt-get:*)",
+      "Bash(jq --version)",
+      "Bash(git add:*)",
+      "Bash(git rm:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(python3 -c \"from engine import run; print\\('OK'\\)\")"
+    ]
+  },
   "hooks": {
     "PreToolUse": [
       {
@@ -21,28 +44,6 @@
           }
         ]
       }
-    ]
-  },
-  "permissions": {
-    "allow": [
-      "Bash(openvpn --config /htb/machines_us-4.ovpn --daemon)",
-      "Bash(ip a:*)",
-      "Bash(git remote:*)",
-      "Bash(curl --connect-timeout 3 --max-time 5 -sg \"http://portal.variatype.htb/files/s.php?c=cat+/etc/hostname\")",
-      "Bash(curl --connect-timeout 3 --max-time 5 -sg \"http://portal.variatype.htb/files/s.php?c=ls+/tmp/sb\")",
-      "Bash(curl --connect-timeout 3 --max-time 5 -sg \"http://portal.variatype.htb/files/s.php?c=python3+-c+%22print\\(42\\)%22\")",
-      "Bash(curl:*)",
-      "Bash(sudo mkdir:*)",
-      "Bash(sudo chmod:*)",
-      "Bash(chmod +x:*)",
-      "Bash(/htb/.claude/hooks/action-log.sh)",
-      "Bash(echo \"exit: $?\")",
-      "Bash(python3 -c \"import json; print\\('ok'\\)\")",
-      "Bash(sudo apt-get:*)",
-      "Bash(jq --version)",
-      "Bash(git add:*)",
-      "Bash(git rm:*)",
-      "Bash(git commit -m ':*)"
     ]
   }
 }

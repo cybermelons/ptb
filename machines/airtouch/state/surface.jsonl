@@ -1,0 +1,16 @@
+{"type":"host","ip":"10.129.244.98","hostname":"airtouch","discovered_by":"nmap -sS -p-","ts":"2026-04-05T01:15:00Z"}
+{"type":"service","ip":"10.129.244.98","port":22,"proto":"tcp","service":"ssh","product":"OpenSSH","version":"8.2p1 Ubuntu 4ubuntu0.11","discovered_by":"nmap -sV","ts":"2026-04-05T01:17:00Z"}
+{"type":"service","ip":"10.129.244.98","port":161,"proto":"udp","service":"snmp","discovered_by":"nmap -sU","ts":"2026-04-05T01:16:00Z"}
+{"type":"config","ip":"10.129.244.98","detail":"SNMP public community readable, leaks default consultant password in sysDescr","discovered_by":"snmpwalk -v2c -c public","ts":"2026-04-05T01:18:00Z"}
+{"type":"dns","record":"email","name":"AirTouch.htb","value":"admin@AirTouch.htb","discovered_by":"SNMP sysContact","ts":"2026-04-05T01:18:00Z"}
+{"type":"service","ip":"10.129.244.98","detail":"SSID AirTouch-Internet, BSSID f0:9f:c2:a3:f1:a7, ch6, WPA2-PSK CCMP/TKIP, Tablets VLAN 192.168.3.0/24","discovered_by":"iw scan","ts":"2026-04-05T01:20:00Z"}
+{"type":"service","ip":"10.129.244.98","detail":"SSID AirTouch-Office, BSSID ac:8b:a9:f3:a1:13 + ac:8b:a9:aa:3f:d2, ch44 5GHz, WPA2-Enterprise 802.1X CCMP, Corp VLAN 10.10.10.0/24","discovered_by":"iw scan","ts":"2026-04-05T01:20:00Z"}
+{"type":"host","ip":"192.168.3.48","hostname":"AirTouch-Consultant","detail":"Our IP on Tablets VLAN via AirTouch-Internet WiFi (wlan0)","discovered_by":"dhclient wlan0","ts":"2026-04-05T01:24:00Z"}
+{"type":"service","ip":"192.168.3.1","port":22,"proto":"tcp","service":"ssh","product":"OpenSSH","version":"8.2p1 Ubuntu 4ubuntu0.11","discovered_by":"nmap -sV","ts":"2026-04-05T01:25:00Z"}
+{"type":"service","ip":"192.168.3.1","port":53,"proto":"tcp","service":"dns","product":"dnsmasq","version":"2.90","discovered_by":"nmap -sV","ts":"2026-04-05T01:25:00Z"}
+{"type":"service","ip":"192.168.3.1","port":80,"proto":"tcp","service":"http","product":"Apache","version":"2.4.41","discovered_by":"nmap -sV","ts":"2026-04-05T01:25:00Z"}
+{"type":"directory","ip":"192.168.3.1","port":80,"path":"/login.php","status":200,"discovered_by":"manual probe","ts":"2026-04-05T01:28:00Z"}
+{"type":"host","ip":"unknown","mac":"28:6c:07:12:ee:f3","detail":"Corporate client on AirTouch-Office, uses EAP-PEAP with CA validation","discovered_by":"eaphammer evil twin","ts":"2026-04-05T01:33:00Z"}
+{"type":"service","ip":"172.20.1.1","port":22,"proto":"tcp","service":"ssh","product":"OpenSSH","version":"8.2p1","discovered_by":"nmap -sV","ts":"2026-04-05T01:41:00Z"}
+{"type":"host","ip":"unknown","mac":"C8:8A:9A:6F:F9:D2","detail":"Corporate client on AirTouch-Office AP2, 29 packets, not yet seen on evil twin","discovered_by":"airodump-ng","ts":"2026-04-05T01:43:00Z"}
+{"type":"host","ip":"unknown","mac":"28:6C:07:12:EE:A1","detail":"Corporate client on AirTouch-Office AP2, 1 packet","discovered_by":"airodump-ng","ts":"2026-04-05T01:43:00Z"}

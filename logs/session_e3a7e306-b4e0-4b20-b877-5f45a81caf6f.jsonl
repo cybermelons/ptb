@@ -1,0 +1,3 @@
+{"ts": "2026-04-05T01:15:29.484650Z", "cwd": "/htb", "cmd": "mkdir -p /htb/machines/airtouch/{scans,exploits,logs} && cat /htb/.scope.yml 2>/dev/null"}
+{"ts": "2026-04-05T01:15:30.287632Z", "cwd": "/htb", "cmd": "ping -c 2 -W 2 10.129.244.98"}
+{"ts": "2026-04-05T01:15:50.555983Z", "cwd": "/htb", "cmd": "mkdir -p /htb/machines/airtouch/state && cd /htb/machines/airtouch && touch state/surface.jsonl state/tested.jsonl state/unexplored.jsonl state/creds.jsonl state/findings.jsonl logs/actions.jsonl notes.md"}

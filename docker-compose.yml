@@ -9,7 +9,7 @@ services:
     devices:
       - /dev/net/tun
     volumes:
-      - ./machines_us-4.ovpn:/vpn/config.ovpn:ro
+      - ./release_arena_us-release-2.ovpn:/vpn/config.ovpn:ro
     command: ["openvpn", "--config", "/vpn/config.ovpn", "--pull-filter", "ignore", "ifconfig-ipv6", "--pull-filter", "ignore", "route-ipv6", "--pull-filter", "ignore", "tun-ipv6"]
     restart: unless-stopped
     sysctls:

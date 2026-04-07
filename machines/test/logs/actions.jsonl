@@ -1,0 +1,4 @@
+{"action": "curl http://target/exploit", "ts": "2026-04-05T00:17:46Z"}
+{"action": "nmap -sV 10.10.10.1", "ts": "2026-04-05T00:18:01Z"}
+{"action": "curl http://target/test", "ts": "2026-04-05T00:18:03Z"}
+{"action": "curl http://target/grind6", "ts": "2026-04-05T00:18:05Z"}

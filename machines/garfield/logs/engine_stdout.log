@@ -3,9 +3,7 @@
   Iteration 0
 ============================================================
   Phase: exploit
-  Dead branches: 37
-  Surface entries: 78
-  Tested entries: 121
-  Compacting state (34258 chars > 20000 threshold)...
-  Plan: [post_exploit] rodc01-password-reset-via-lwilson_adm
-  Hypothesis: l.wilson_adm has ForceChangePassword rights on the RODC01$ machine account, allowing us to reset its password and take control of the RODC
+  Dead branches: 40
+  Surface entries: 84
+  Tested entries: 139
+  Compacting state (37717 chars > 20000 threshold)...

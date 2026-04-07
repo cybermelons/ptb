@@ -1,0 +1,4 @@
+{"branch":"Crack AirTouch-Internet WPA2-PSK handshake","rationale":"PSK network, capture handshake and crack to reach Tablets VLAN 192.168.3.0/24","priority":"high","added":"2026-04-05T01:20:00Z"}
+{"branch":"Evil twin AirTouch-Office 802.1X with eaphammer","rationale":"WPA2-Enterprise, capture creds via evil twin to reach Corp VLAN 10.10.10.0/24","priority":"high","added":"2026-04-05T01:20:00Z"}
+{"branch":"Enumerate Tablet manager on 192.168.3.0/24","rationale":"Diagram shows tablet manager device, possible web interface","priority":"medium","added":"2026-04-05T01:20:00Z"}
+{"branch":"Enumerate Corporate computer on 10.10.10.0/24","rationale":"Likely where flags are","priority":"medium","added":"2026-04-05T01:20:00Z"}
