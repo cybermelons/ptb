@@ -1,0 +1,2 @@
+- [Engine-operator split](feedback_engine_operator_split.md) — engine executes, operator watches and correlates patterns
+- [Pentest engine design](project_engine_design.md) — how the orchestrator works, key lessons
