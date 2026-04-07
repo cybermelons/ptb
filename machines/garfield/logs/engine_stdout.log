@@ -51,21 +51,22 @@
   Compacting state (31143 chars > 20000 threshold)...
   Plan: [enumerate] hyper-v-vmrdp-2179-probe
   Hypothesis: Hyper-V VMRDP on port 2179 accepts authenticated connections from j.arbuckle, providing console access to RODC01 VM (which caches Administrator credentials and is otherwise unreachable at 192.168.100.2)
-dp) allows j.arbuckle to enumerate or connect to Hyper-V VM consoles — specifically RODC01 — bypassing the unreachable 192.168.100.0/24 internal network. vmrdp console access uses different ACLs than WMI management (which is the dead branch).
   DRIFT KILL: Hard tool limit (10) exceeded
   Verdict: inconclusive
   Block: soft — Drift: Hard tool limit (10) exceeded
   Summary: Executor killed: Hard tool limit (10) exceeded. 11 tool calls, 0 findings from stream.
 
 ============================================================
-  Iteration 3
+  Iteration 4
 ============================================================
   Phase: exploit
-  Dead branches: 29
-  Surface entries: 65
-  Tested entries: 95
-  Compacting state (28982 chars > 20000 threshold)...
-  Plan: [enumerate] adws-9389-enumeration
+  Dead branches: 34
+  Surface entries: 76
+  Tested entries: 103
+  Compacting state (32790 chars > 20000 threshold)...
+  Plan: [exploit] crack-lwilson-ntlmv2-garfield-themed
+  Hypothesis: l.wilson's NTLMv2 hash is crackable with a comprehensive Garfield-universe wordlist combined with aggressive hashcat rules, given that password complexity is OFF and min length is only 7
+numerate] adws-9389-enumeration
   Hypothesis: ADWS on port 9389 exposes AD operations or configuration data not available through LDAP — specifically, PowerShell AD cmdlet equivalents that may allow password reset (ForceChangePassword) or reveal attributes filtered from standard LDAP queries
   Verdict: denied
   Block: hard — ADWS uses WCF/SOAP over net.tcp with mandatory Windows Negotiate (SPNEGO/Kerberos) authentication at the transport layer. No Linux-native tooling exists to interact with it from this environment. The protocol requires a full .NET WCF client stack or PowerShell with AD module — neither available. ADWS is an alternative transport for the same AD operations with the same ACLs, so even if reachable, it would not bypass LDAP access controls for j.arbuckle.
@@ -82,3 +83,14 @@ dp) allows j.arbuckle to enumerate or connect to Hyper-V VM consoles — specifi
   Surface entries: 76
   Tested entries: 100
   Compacting state (32412 chars > 20000 threshold)...
+  Plan: [exploit] force-password-change-lwilson
+  Hypothesis: j.arbuckle has ForceChangePassword extended right on l.wilson (distinct from WriteProp), allowing us to set l.wilson's password and gain WinRM access
+  Verdict: denied
+  Block: hard — j.arbuckle lacks ForceChangePassword / User-Force-Change-Password extended right on l.wilson. The WriteProp on scriptPath does not grant password reset capability. NT_STATUS_ACCESS_DENIED is a definitive ACL denial, not a syntax or connectivity issue.
+  Findings: 1 new
+  Summary: result: NT_STATUS_ACCESS_DENIED
+result was NT_STATUS_ACCESS_DENIED
+  Branch marked dead: force-password-change-lwilson (hard block)
+
+Orchestrator finished after 5 iterations.
+Log: /htb/machines/garfield/logs/orchestrator.jsonl

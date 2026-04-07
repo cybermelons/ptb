@@ -243,3 +243,43 @@ The box seems designed around triggering l.wilson's logon. We captured her hash 
   1. kpasswd5 (464) — Kerberos password change, unexplored
   2. Triggering l.wilson logon somehow
   3. Something we're not seeing (thematic? timing? different protocol?)
+
+### Engine Iteration 5: ADWS (9389)
+- ADWS needs .NET WCF stack, not available from Linux
+- LDAP on 9389 = "Can't contact LDAP server", SOAP probes = ConnectionReset
+- **HARD BLOCK**
+
+### Engine Iteration 6: Hyper-V vmrdp (2179)
+- ncat raw + SSL probes, xfreerdp auth test, nmap rdp scripts
+- Executor drift-killed at 10 tools before completing analysis
+- Port open but vmrdp is a proprietary Hyper-V console protocol
+
+### Engine Iteration 7: ForceChangePassword on l.wilson
+- rpcclient setuserinfo2 l.wilson 23 → NT_STATUS_ACCESS_DENIED
+- bloodyAD set password → same result
+- j.arbuckle does NOT have ForceChangePassword on l.wilson
+- **HARD BLOCK**
+
+### Engine Run Summary (10 iterations total across 2 runs)
+- 33 dead branches, 101 tested entries
+- Novel findings: RPC-HTTP interfaces on port 49670, ADWS not Linux-accessible
+- Corrected: bf9679a8 = scriptPath NOT member (critical fix)
+- ALL standard AD attack paths now exhausted from j.arbuckle's access level
+
+### Remaining Attack Surface (almost nothing left)
+1. **scriptPath write** — only useful if logon sim fires (never does)
+2. **PetitPotam coercion** — DC01$ auths but relay fails everywhere
+3. **FAKEPC$ machine account** — SPN + DNS but no one authenticates to it
+4. **DNS write** — can create records but no traffic to poison
+5. **Hyper-V port 2179** — open but unexplored (vmrdp protocol)
+
+### The Box Is Stuck At One Question
+How do we get l.wilson's credentials? Every path leads here:
+- Can't crack her hash (uncrackable)
+- Can't reset her password (no ForceChangePassword)
+- Can't trigger her logon script (never fires)
+- Can't relay to get her TGT (all relay dead)
+- Can't write to PRG (only scriptPath)
+- The ONLY thing we can do is SET HER SCRIPTPATH and write to SYSVOL
+
+Something about the Garfield theme or the scriptPath mechanism is the key we're missing.

