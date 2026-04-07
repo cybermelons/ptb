@@ -1,2 +1,4 @@
 - [Engine-operator split](feedback_engine_operator_split.md) — engine executes, operator watches and correlates patterns
+- [Script known chains](feedback_script_known_chains.md) — once a chain is confirmed, script it. don't re-run through engine.
+- [Proactive intervention](feedback_proactive_intervention.md) — if you know the engine will fail, STOP it before it burns tokens.
 - [Pentest engine design](project_engine_design.md) — how the orchestrator works, key lessons

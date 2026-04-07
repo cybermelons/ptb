@@ -4,34 +4,6 @@
 ============================================================
   Phase: exploit
   Dead branches: 40
-  Surface entries: 86
-  Tested entries: 163
-  Compacting state (38519 chars > 20000 threshold)...
-  Plan: [exploit] j.arbuckle scriptPath chain on fresh instance 10.129.17.158
-  Hypothesis: j.arbuckle:Th1sD4mnC4t!@1978 credentials are valid on 10.129.17.158 and can write to SYSVOL
-  Verdict: confirmed
-  Findings: 3 new
-  Summary: SYSVOL ls: garfield.htb directory listed. Write test: successfully put file to \garfield.htb\scripts\test_write.txt then cleaned up.
-
-============================================================
-  Iteration 1
-============================================================
-  Phase: exploit
-  Dead branches: 40
-  Surface entries: 89
-  Tested entries: 164
-  Compacting state (39136 chars > 20000 threshold)...
-  Plan: [exploit] scriptpath-chain-fresh-instance-10-129-17-158
-  Hypothesis: j.arbuckle credentials and SYSVOL write access persist on fresh DC instance 10.129.17.158, enabling the proven scriptpath exploit chain to reset l.wilson_adm password
-  Verdict: confirmed
-  Findings: 4 new
-  Summary: SYSVOL listing: garfield.htb directory accessible. Bat uploaded to garfield.htb\scripts\pwreset.bat (175 bytes). scriptPath modify on 'CN=Liz Wilson,CN=Users,DC=garfield,DC=htb' returned result=0 succ
-
-============================================================
-  Iteration 2
-============================================================
-  Phase: exploit
-  Dead branches: 40
   Surface entries: 93
-  Tested entries: 166
-  Compacting state (40288 chars > 20000 threshold)...
+  Tested entries: 167
+  Compacting state (40322 chars > 20000 threshold)...

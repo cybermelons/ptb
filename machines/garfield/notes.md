@@ -345,3 +345,23 @@ On instances 2-5, we set scriptPath ONCE and waited. It probably fired once but 
 ## 10:55 — USER FLAG
 f1ad2ce1429fe8a175400db776ed4ed4
 Location: C:\Users\l.wilson_adm\Desktop\user.txt
+
+## 19:26 — Fresh instance .158 — chain replay
+
+### Confirmed working (scripted):
+1. ✓ Upload bat to SYSVOL (smbclient j.arbuckle)
+2. ✓ Toggle scriptPath → bat fires as l.wilson → l.wilson_adm password changed
+3. ✓ rpcclient RODC01$ password reset
+4. ✓ rpcclient krbtgt_8245 password reset
+5. ✓ addcomputer PWNED$ created
+6. ✓ RBCD set: PWNED$ → RODC01$
+7. ✓ S4U2Proxy: Administrator ticket for cifs/RODC01$ obtained
+8. ✓ S4U2Proxy altservice: Administrator ticket for cifs/DC01 obtained
+
+### Failed on root step:
+- secretsdump with altservice ticket → KRB_AP_ERR_MODIFIED (ticket encrypted with RODC01$ key, DC01 can't decrypt)
+- DCSync as RODC01$ → access denied (RODC can't initiate replication)
+- keylistattack with 4 salt variants → empty results (Administrator not in RODC allowed PRG for key list)
+- Constrained delegation on RODC01$ → insufficientAccessRights
+
+### Unsolved: How to go from RODC01$/krbtgt_8245 control to Administrator on DC01
