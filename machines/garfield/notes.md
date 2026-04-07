@@ -66,23 +66,62 @@
 - Relay to LDAPS: FAILED — "socket ssl wrapping error: Connection reset by peer" (channel binding enforced)
 - NTLM relay is a DEAD PATH on this box
 
+## 10:23 — IP changed to 10.129.17.33 (box reset #2)
+- setup.sh ran within seconds of spawn
+- VBS ADSI SetPassword bat uploaded, scriptPath set on l.wilson
+- Polled 20+ minutes — no logon, no password change, no result.txt
+- Responder captured ZERO traffic from this instance
+- ntlmrelayx was on port 445 for 7+ hours — may have swallowed auth signals
+- noPac (CVE-2021-42278): PATCHED — sAMAccountName rename rejected
+- PrintNightmare (CVE-2021-1675): FAILED — 0x8001011b, no driver install rights
+
+## 17:50 — Comprehensive ACL re-audit
+- IT Support has ONLY WriteProp(scriptPath) on user objects — nothing else
+- Domain Users/Authenticated Users have no unusual write permissions
+- Tier 1 group has NO ACLs on any target objects
+- Everyone has CREATE_CHILD on DNS zone → can create DNS records
+- Port 2179 (vmrdp) open → Hyper-V running, RODC01 is likely a VM on DC01
+
+## 18:00 — ADIDNS Exploitation
+- dnstool.py (krbrelayx) creates records that RESOLVE on some instances
+- nsupdate -g (Kerberos GSS-TSIG) creates records that ALWAYS RESOLVE
+- Created wildcard *.garfield.htb → our IP (works on instance 10.129.17.33)
+- Created pwned.garfield.htb, pwned3.garfield.htb → our IP
+- WPAD blocked by Global Query Block List (GQBL)
+- Wildcard DNS + ntlmrelayx: zero traffic captured in 5+ minutes
+
+## 19:00 — IP changed to 10.129.17.70 (box reset #3)
+- setup.sh ran immediately, clean bat (no SYSVOL redirect)
+- Created FAKEPC$ machine account again
+- Set FAKEPC$ dNSHostName = FAKEPC.garfield.htb → SUCCESS
+- Added SPNs cifs/FAKEPC.garfield.htb, HOST/FAKEPC.garfield.htb → SUCCESS
+- DNS: FAKEPC.garfield.htb → our IP (via nsupdate -g)
+- RBCD set on FAKEPC$ allowing DC01$ to delegate (via rbcd.py)
+- Attempted krbrelayx Kerberos relay: same stdin/port binding bug
+- Printing vectors: no printers configured, can't add (ACCESS_DENIED), no printQueue create rights
+
 ## Dead Ends Summary
 - Password spray: thousands of candidates, all failed
 - Hash cracking: rockyou, 10M, 412K themed, rules — uncrackable
-- NTLM relay: signing blocks LDAP, channel binding blocks LDAPS
+- NTLM relay: SMB signing blocks LDAP, channel binding blocks LDAPS
+- Kerberos relay (krbrelayx): same port binding bug as ntlmrelayx
 - Reverse shell via bat: AV/AMSI blocks PowerShell
 - RODC01 (192.168.100.2): not reachable from attacker
-- Logon script simulation: worked ONCE on first instance, never again
+- Logon script simulation: worked ONCE on first instance, never again on 3 subsequent resets
+- noPac: PATCHED
+- PrintNightmare: PATCHED/no rights
+- ADIDNS wildcard: resolves but no passive traffic to capture
+- Printer operations: all ACCESS_DENIED, no printers configured
 
-## Open Questions
-- Why did l.wilson's hash appear on the FIRST instance but never again?
-- Is there a way to TRIGGER l.wilson's logon rather than waiting?
-- Are there attack paths we haven't considered? (ADIDNS, GPO abuse, other writable attributes?)
-- What is the INTENDED entry point the box maker designed?
+## Still Alive
+- FAKEPC$ machine account with SPN + DNS pointing to us (Kerberos target)
+- scriptPath write + SYSVOL write (if logon simulation ever fires)
+- PetitPotam coercion (DC01$ connects to us but relay fails)
+- Password poller running in background
 
-## Current Capabilities
-- j.arbuckle creds (domain user, IT Support)
-- WriteProp(scriptPath) on all users in CN=Users
-- SYSVOL scripts/ write access
-- Machine account FAKEPC$ with known password
-- PetitPotam coercion (DC01$ auths to us, but can't relay)
+## Key Unsolved Questions
+1. Why did l.wilson log in ONCE (first instance) but never again?
+2. What triggers printerDetect.bat? Logon script? Scheduled task? Print event?
+3. Can we fix krbrelayx port binding and do Kerberos-to-LDAP relay?
+4. Is there a Hyper-V attack vector via port 2179?
+5. What is the ACTUAL intended path on this hard box?
