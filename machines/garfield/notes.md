@@ -365,3 +365,15 @@ Location: C:\Users\l.wilson_adm\Desktop\user.txt
 - Constrained delegation on RODC01$ → insufficientAccessRights
 
 ### Unsolved: How to go from RODC01$/krbtgt_8245 control to Administrator on DC01
+
+## 19:49 — Engine UAC modification attempt
+- l.wilson_adm CAN write userAccountControl on RODC01$ (WriteAccountRestrictions confirmed)
+- TRUSTED_FOR_DELEGATION rejected: "Invalid argument" — incompatible with PARTIAL_SECRETS_ACCOUNT
+- RODC01$ already has TRUSTED_TO_AUTH_FOR_DELEGATION (constrained w/ protocol transition)
+- But msDS-AllowedToDelegateTo is NOT writable (insufficientAccessRights)
+- So T2A4D flag is useless without being able to set the delegation target
+
+## Root still needed
+- Engine found user flag again, stopped thinking it was root
+- l.wilson_adm has no high-value privs (no SeImpersonate, SeBackup)
+- Need creative approach to read C:\Users\Administrator\Desktop\root.txt

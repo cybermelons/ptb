@@ -3,25 +3,34 @@
   Iteration 0
 ============================================================
   Phase: exploit
-  Dead branches: 43
-  Surface entries: 93
-  Tested entries: 174
-  Compacting state (40931 chars > 20000 threshold)...
-  Plan: [post_exploit] l.wilson_adm local privilege escalation on DC01 via cached credentials or registry access
-  Hypothesis: l.wilson_adm can extract cached Administrator NTLM credentials, DPAPI secrets, or SAM registry keys from DC01 via SeBackupPrivilege or credential manager enumeration
+  Dead branches: 46
+  Surface entries: 97
+  Tested entries: 182
+  Plan: [exploit] RODC01-unconstrained-delegation-via-userAccountControl
+  Hypothesis: l.wilson_adm can modify RODC01$ userAccountControl via WriteAccountRestrictions extended right to add TRUSTED_FOR_DELEGATION flag (0x80000), enabling unconstrained delegation for S4U ticket capture
   Verdict: denied
-  Block: hard — l.wilson_adm is not local admin on DC01, has no SeBackupPrivilege, no cached credentials (cmdkey empty), and cannot access HKLM\Security\Cache or SAM registry. No credential extraction path available from this user's privilege level. The entire technique category of local credential extraction (SAM dump, cached logon hashes, DPAPI secrets, registry secrets) is blocked without admin/SYSTEM access.
+  Block: hard — Active Directory enforces that PARTIAL_SECRETS_ACCOUNT (RODC) computer objects cannot have TRUSTED_FOR_DELEGATION (unconstrained delegation) flag set. This is a structural AD constraint, not a permissions issue. The flag combination is rejected with 'Invalid argument' even though l.wilson_adm has proven write access to userAccountControl. Additionally, changing the account type away from RODC is blocked by insufficient access rights.
   Findings: 4 new
-  Summary: cmdkey /list: Currently stored credentials: * NONE *
-whoami /priv: SeMachineAccountPrivilege, SeChangeNotifyPrivilege, SeIncreaseWorkingSetPrivilege (all Enabled)
-reg query HKLM\Security\Cache: ERROR:
-  Branch marked dead: l.wilson_adm local privilege escalation on DC01 via cached credentials or registry access (hard block)
+  Summary: Current RODC01$ UAC: 83890176 (0x05001000) = WORKSTATION_TRUST_ACCOUNT | TRUSTED_TO_AUTH_FOR_DELEGATION | PARTIAL_SECRETS_ACCOUNT
+
+Setting same value: result=0 success (proves l.wilson_adm CAN modify 
+  Branch marked dead: RODC01-unconstrained-delegation-via-userAccountControl (hard block)
 
 ============================================================
   Iteration 1
 ============================================================
   Phase: exploit
-  Dead branches: 44
-  Surface entries: 97
-  Tested entries: 176
-  Compacting state (42197 chars > 20000 threshold)...
+  Dead branches: 47
+  Surface entries: 101
+  Tested entries: 184
+  Plan: [exploit] l.wilson_adm direct WinRM command execution
+  Hypothesis: l.wilson_adm (Tier 1 admin) can execute remote commands via WinRM on 10.129.17.158 to establish interactive access
+  Verdict: confirmed
+  Findings: 4 new
+  Summary: WinRM Pwn3d! as garfield\l.wilson_adm on DC01 (10.129.17.158). User is member of Tier 1 group, Remote Management Users, Remote Desktop Users. Medium Plus mandatory level. Hostname: DC01. Users on box:
+
+  *** FLAG FOUND: ['3b71b94416ebeb0d48c30ddcafa363a8'] ***
+
+
+Orchestrator finished after 2 iterations.
+Log: /htb/machines/garfield/logs/orchestrator.jsonl

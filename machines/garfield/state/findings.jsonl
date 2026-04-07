@@ -1,0 +1,1 @@
+{"id": "FLAG-1775591525", "vuln": "flag_capture", "class": "flag", "severity": "critical", "host": "", "evidence_output": "3b71b94416ebeb0d48c30ddcafa363a8", "impact": "Flag captured", "ts": "2026-04-07T19:52:05.341346+00:00"}
