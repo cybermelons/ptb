@@ -77,3 +77,99 @@ else:
 s.close()
 " 2>&1; echo "---EXIT:$?---"
 [10:24:21] RUN: nmap -p 53,88,3389,5985 -sV -Pn 10.129.17.178 2>&1 | head -30
+[10:25:55] RUN: cat /htb/machines/garfield/state/creds.jsonl | grep j.arbuckle
+[10:25:56] RUN: ldapsearch -x -H ldap://10.129.17.178:9389 -b "" -s base 2>&1 | head -20
+[10:26:17] RUN: python3 -c "
+import socket, ssl, struct
+
+# Try raw TCP connection to ADWS port 9389 - .NET Message Framing probe
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.settimeout(10)
+sock.connect(('10.129.17.178', 9389))
+
+# .NET Message Framing: Version Record (0x00) + Mode Record (0x01) + Via Record (0x02)
+# Version: Major=1, Minor=0
+version_record = bytes([0x00, 0x01, 0x00])
+# Mode: Singleton-Unsized (0x01) 
+mode_record = bytes([0x01, 0x01])
+# Via: net.tcp://10.129.17.178:9389/ActiveDirectoryWebServices/Windows
+via_url = b'net.tcp://10.129.17.178:9389/ActiveDirectoryWebServices/Windows'
+via_len = len(via_url)
+via_record = bytes([0x02]) + bytes([via_len]) + via_url
+
+# Send framing preamble
+sock.sendall(version_record + mode_record + via_record)
+
+# Preamble End record
+sock.sendall(bytes([0x0C]))
+
+# Read response
+data = sock.recv(4096)
+print(f'Response bytes: {data.hex()}')
+print(f'Response raw: {data}')
+print(f'Response length: {len(data)}')
+
+# Byte 0 should be 0x0B (Preamble Ack) if server accepts
+if data and data[0] == 0x0b:
+    print('SUCCESS: Server acknowledged .NET Message Framing preamble')
+else:
+    print(f'Server response code: {hex(data[0]) if data else \"empty\"}')
+
+sock.close()
+" 2>&1
+[10:26:19] RUN: curl -s --connect-timeout 10 -H "Content-Type: application/soap+xml" -d '<?xml version="1.0" encoding="utf-8"?><s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope"><s:Body><Enumerate xmlns="http://schemas.xmlsoap.org/ws/2004/09/enumeration"/></s:Body></s:Envelope>' http://10.129.17.178:9389/ActiveDirectoryWebServices/Windows 2>&1 | head -20
+[10:26:29] RUN: # Try with the correct .NET Message Framing - maybe needs Windows upgrade negotiation
+python3 -c "
+import socket
+
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.settimeout(10)
+sock.connect(('10.129.17.178', 9389))
+
+# .NET Message Framing preamble
+# Version Record: type=0x00, major=1, minor=0  
+version = bytes([0x00, 0x01, 0x00])
+# Mode Record: type=0x01, mode=0x02 (Duplex)
+mode = bytes([0x01, 0x02])
+# Via Record
+via_url = b'net.tcp://10.129.17.178:9389/ActiveDirectoryWebServices/Windows'
+via = bytes([0x02, len(via_url)]) + via_url
+# Upgrade Record for Negotiate auth
+upgrade_type = b'application/negotiate'
+upgrade = bytes([0x09, len(upgrade_type)]) + upgrade_type
+# Preamble End
+preamble_end = bytes([0x0C])
+
+payload = version + mode + via + preamble_end
+sock.sendall(payload)
+
+import select
+ready = select.select([sock], [], [], 5)
+if ready[0]:
+    data = sock.recv(4096)
+    print(f'Response hex: {data.hex()}')
+    print(f'Response len: {len(data)}')
+    if data[0:1] == b'\x0b':
+        print('Preamble ACK received - ADWS accepts connections')
+    elif data[0:1] == b'\x0a':
+        print('Upgrade response received')
+    else:
+        print(f'Unknown response type: {hex(data[0])}')
+else:
+    print('No response within 5s')
+
+sock.close()
+" 2>&1
+[10:26:34] RUN: # ADWS requires Windows Negotiate/Kerberos auth over net.tcp - not feasible from Linux without specialized tooling
+# Check if bloodyAD can use ADWS, and check if there are any Python tools for ADWS
+pip3 list 2>/dev/null | grep -i -E "adws|wcf|soap" ; bloodyAD --help 2>&1 | grep -i adws ; python3 -c "import ADWSpy" 2>&1; which powershell pwsh 2>&1
+[10:26:39] READ: /htb/state/creds.jsonl
+[10:26:40] RUN: nc -vz -w 5 10.129.17.178 2179 2>&1
+[10:26:43] RUN: ncat -vz -w 5 10.129.17.178 2179 2>&1
+[10:26:47] RUN: timeout 5 bash -c 'echo > /dev/tcp/10.129.17.178/2179' 2>&1 && echo "OPEN" || echo "CLOSED/FILTERED"
+[10:26:48] RUN: grep -i "j.arbuckle\|arbuckle" /htb/state/creds.jsonl 2>/dev/null; cat /htb/machines/garfield/state/creds.jsonl 2>/dev/null
+[10:27:06] RUN: timeout 10 xfreerdp /v:10.129.17.178:2179 /u:j.arbuckle /p:'Th1sD4mnC4t!@1978' /d:garfield.htb /cert:ignore +auth-only 2>&1 | head -50
+[10:27:09] RUN: timeout 10 bash -c '(echo -ne "\x03\x00\x00\x13\x0e\xe0\x00\x00\x00\x00\x00\x01\x00\x08\x00\x03\x00\x00\x00"; sleep 2) | openssl s_client -connect 10.129.17.178:2179 -quiet 2>&1' | head -30
+[10:27:14] RUN: which xfreerdp xfreerdp3 rdesktop 2>/dev/null; apt list --installed 2>/dev/null | grep -i rdp
+[10:27:16] RUN: timeout 10 bash -c '(echo -ne "\x03\x00\x00\x13\x0e\xe0\x00\x00\x00\x00\x00\x01\x00\x08\x00\x03\x00\x00\x00"; sleep 3) | cat - <(sleep 3) | openssl s_client -connect 10.129.17.178:2179 -quiet 2>&1' | xxd | head -20
+[10:27:23] RUN: apt-get install -y xfreerdp3 2>&1 | tail -5

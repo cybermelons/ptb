@@ -49,14 +49,9 @@
   Surface entries: 73
   Tested entries: 96
   Compacting state (31143 chars > 20000 threshold)...
-==================================================
-  Phase: exploit
-  Dead branches: 29
-  Surface entries: 55
-  Tested entries: 93
-  Compacting state (26472 chars > 20000 threshold)...
-  Plan: [enumerate] hyper-v-vmrdp-console-access
-  Hypothesis: Port 2179 (vmrdp) allows j.arbuckle to enumerate or connect to Hyper-V VM consoles — specifically RODC01 — bypassing the unreachable 192.168.100.0/24 internal network. vmrdp console access uses different ACLs than WMI management (which is the dead branch).
+  Plan: [enumerate] hyper-v-vmrdp-2179-probe
+  Hypothesis: Hyper-V VMRDP on port 2179 accepts authenticated connections from j.arbuckle, providing console access to RODC01 VM (which caches Administrator credentials and is otherwise unreachable at 192.168.100.2)
+dp) allows j.arbuckle to enumerate or connect to Hyper-V VM consoles — specifically RODC01 — bypassing the unreachable 192.168.100.0/24 internal network. vmrdp console access uses different ACLs than WMI management (which is the dead branch).
   DRIFT KILL: Hard tool limit (10) exceeded
   Verdict: inconclusive
   Block: soft — Drift: Hard tool limit (10) exceeded
@@ -70,3 +65,20 @@
   Surface entries: 65
   Tested entries: 95
   Compacting state (28982 chars > 20000 threshold)...
+  Plan: [enumerate] adws-9389-enumeration
+  Hypothesis: ADWS on port 9389 exposes AD operations or configuration data not available through LDAP — specifically, PowerShell AD cmdlet equivalents that may allow password reset (ForceChangePassword) or reveal attributes filtered from standard LDAP queries
+  Verdict: denied
+  Block: hard — ADWS uses WCF/SOAP over net.tcp with mandatory Windows Negotiate (SPNEGO/Kerberos) authentication at the transport layer. No Linux-native tooling exists to interact with it from this environment. The protocol requires a full .NET WCF client stack or PowerShell with AD module — neither available. ADWS is an alternative transport for the same AD operations with the same ACLs, so even if reachable, it would not bypass LDAP access controls for j.arbuckle.
+  Findings: 3 new
+  Summary: ldapsearch on 9389: 'Can't contact LDAP server (-1)' — port does not speak LDAP.
+.NET Message Framing probes (both Singleton-Unsized and Duplex modes): ConnectionResetError [Errno 104] — server resets
+  Branch marked dead: adws-9389-enumeration (hard block)
+
+============================================================
+  Iteration 4
+============================================================
+  Phase: exploit
+  Dead branches: 32
+  Surface entries: 76
+  Tested entries: 100
+  Compacting state (32412 chars > 20000 threshold)...

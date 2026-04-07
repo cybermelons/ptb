@@ -225,3 +225,21 @@ Still alive:
 4. DNS write (can create records, but no traffic to poison)
 
 The box seems designed around triggering l.wilson's logon. We captured her hash ONCE on the first instance but it never fired again across 5+ resets. The SeBatchLogonRight GPO confirms a mechanism exists. What triggers it?
+
+### Iteration 8: ADWS 9389
+- SOAP/WCF protocol, not LDAP — ldapsearch fails on port 9389
+- Requires WS-Management with Kerberos SPNEGO — can't use from Linux easily
+- **HARD BLOCK: ADWS not exploitable without Windows PowerShell**
+
+### Engine bug: lost results
+- Executor returns findings but final JSON doesn't parse → state not updated
+- Planner re-picks the same branch because tested.jsonl wasn't written
+- Fixed by manually logging results. Need to fix streaming parser.
+
+### Status after engine run
+- **31 dead branches, ~97 tested entries**
+- Every new service port has been explored and blocked
+- Remaining attack surface is VERY narrow:
+  1. kpasswd5 (464) — Kerberos password change, unexplored
+  2. Triggering l.wilson logon somehow
+  3. Something we're not seeing (thematic? timing? different protocol?)
