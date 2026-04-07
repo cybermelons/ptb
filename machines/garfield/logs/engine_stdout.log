@@ -5,5 +5,22 @@
   Phase: exploit
   Dead branches: 40
   Surface entries: 84
-  Tested entries: 139
-  Compacting state (37717 chars > 20000 threshold)...
+  Tested entries: 162
+  Compacting state (38053 chars > 20000 threshold)...
+  Plan: [exploit] NEWPC$ relay-bypass for Administrator impersonation via RBCD
+  Hypothesis: A new computer account (NEWPC$) created by j.arbuckle and configured with RBCD on RODC01$ (via l.wilson_adm) can perform S4U2Proxy delegation to impersonate Administrator without the KRB_AP_ERR_MODIFIED encryption mismatch that plagued direct RODC01$ operations
+  Verdict: inconclusive
+  Block: soft — Target host 10.129.17.178 is unreachable - machine may need to be respawned or IP has changed. Cannot execute any part of the RBCD chain.
+  Findings: 2 new
+  Summary: addcomputer.py: Could not connect: [Errno 113] No route to host
+ping: 1 packets transmitted, 0 received, 100% packet loss
+tun0 is UP with IP 10.10.17.114/23 but target 10.129.17.178 is unreachable
+
+============================================================
+  Iteration 1
+============================================================
+  Phase: exploit
+  Dead branches: 40
+  Surface entries: 86
+  Tested entries: 163
+  Compacting state (38519 chars > 20000 threshold)...

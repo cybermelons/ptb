@@ -3,3 +3,4 @@
 {"id": "cred-auto-1775559748", "type": "password", "username": "RODC01$", "secret": "N3wR0dcP@ss!", "host": "", "source": "ForceChangePassword by l.wilson_adm via bloodyAD", "ts": "2026-04-07T11:02:28.606288+00:00"}
 {"id":"cred-004","type":"password","username":"RODC01$","secret":"NewRodcPass123!","domain":"garfield.htb","source":"ForceChangePassword via l.wilson_adm","ts":"2026-04-07T11:01:00Z"}
 {"id":"cred-005","type":"password","username":"krbtgt_8245","secret":"KrbtgtPass123!","domain":"garfield.htb","source":"ForceChangePassword via RODC01$","ts":"2026-04-07T11:01:00Z"}
+{"id":"cred-004-updated","type":"password","username":"RODC01$","secret":"N3wR0dcP@ss!","domain":"garfield.htb","source":"rpcclient setuserinfo2 - updated to match planner","ts":"2026-04-07T11:21:00Z"}
