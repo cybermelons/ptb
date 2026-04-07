@@ -3,94 +3,39 @@
   Iteration 0
 ============================================================
   Phase: exploit
-  Dead branches: 27
-  Surface entries: 43
-  Tested entries: 88
-  Compacting state (22129 chars > 20000 threshold)...
-  Plan: [recon] full-port-scan-current-ip
-  Hypothesis: A full TCP port scan of 10.129.17.178 will reveal services not found in previous default scans on older IPs, potentially exposing new attack surface
-  Verdict: confirmed
-  Findings: 5 new
-  Summary: 22 open ports found. Known ports: 53,88,135,389,445,593,636,2179,3268,3269,3389,5985,9389. New ports: 139(netbios-ssn), 464(kpasswd5), 49667,49670,49671,49673,49674,49899,49979 (high RPC). Hostname co
-
-============================================================
-  Iteration 1
-============================================================
-  Phase: exploit
-  Dead branches: 28
-  Surface entries: 53
-  Tested entries: 91
-  Compacting state (25622 chars > 20000 threshold)...
-  Plan: [enumerate] full-tcp-scan-current-ip
-  Hypothesis: A full 65535-port TCP scan on 10.129.17.178 will reveal additional services on high ports not found in the initial top-ports scan, potentially exposing web apps, databases, or management interfaces
-  Verdict: denied
-  Findings: 10 new
-  Summary: 22 open ports total. Known ports: 53,88,135,139,389,445,464,593,636,2179,3268,3389,5985,9389. New ports: 3269 (globalcatLDAPssl), 49667,49670,49671,49673,49674,49899,49979 (unknown high ports, likely 
-
-============================================================
-  Iteration 2
-============================================================
-  Phase: exploit
-  Dead branches: 29
-  Surface entries: 65
-  Tested entries: 94
-  Compacting state (28982 chars > 20000 threshold)...
-  Plan: [recon] full-tcp-scan-178
-  Hypothesis: Full TCP port scan on 10.129.17.178 reveals additional services not seen on previous IPs (.228/.44) that open new attack surface
-  Verdict: denied
-  Findings: 8 new
-  Summary: 22 open ports on DC01.garfield.htb (10.129.17.178): 53(dns), 88(kerberos), 135(msrpc), 139(netbios-ssn), 389(ldap), 445(smb), 464(kpasswd5), 593(http-rpc-epmap), 636(ldapssl), 2179(vmrdp), 3268(global
-
-============================================================
-  Iteration 3
-============================================================
-  Phase: exploit
-  Dead branches: 29
-  Surface entries: 73
-  Tested entries: 96
-  Compacting state (31143 chars > 20000 threshold)...
-  Plan: [enumerate] hyper-v-vmrdp-2179-probe
-  Hypothesis: Hyper-V VMRDP on port 2179 accepts authenticated connections from j.arbuckle, providing console access to RODC01 VM (which caches Administrator credentials and is otherwise unreachable at 192.168.100.2)
+  Dead branches: 35
+  Surface entries: 77
+  Tested entries: 106
+  Compacting state (33327 chars > 20000 threshold)...
+  Plan: [exploit] kpasswd5-set-password-lwilson
+  Hypothesis: j.arbuckle can set l.wilson's password via Kerberos kpasswd5 (port 464) using the set-password-on-behalf protocol, which uses different authorization checks than SAMR ForceChangePassword
   DRIFT KILL: Hard tool limit (10) exceeded
   Verdict: inconclusive
   Block: soft — Drift: Hard tool limit (10) exceeded
   Summary: Executor killed: Hard tool limit (10) exceeded. 11 tool calls, 0 findings from stream.
 
 ============================================================
-  Iteration 4
+  Iteration 1
 ============================================================
   Phase: exploit
-  Dead branches: 34
-  Surface entries: 76
-  Tested entries: 103
-  Compacting state (32790 chars > 20000 threshold)...
-  Plan: [exploit] crack-lwilson-ntlmv2-garfield-themed
-  Hypothesis: l.wilson's NTLMv2 hash is crackable with a comprehensive Garfield-universe wordlist combined with aggressive hashcat rules, given that password complexity is OFF and min length is only 7
-numerate] adws-9389-enumeration
-  Hypothesis: ADWS on port 9389 exposes AD operations or configuration data not available through LDAP — specifically, PowerShell AD cmdlet equivalents that may allow password reset (ForceChangePassword) or reveal attributes filtered from standard LDAP queries
-  Verdict: denied
-  Block: hard — ADWS uses WCF/SOAP over net.tcp with mandatory Windows Negotiate (SPNEGO/Kerberos) authentication at the transport layer. No Linux-native tooling exists to interact with it from this environment. The protocol requires a full .NET WCF client stack or PowerShell with AD module — neither available. ADWS is an alternative transport for the same AD operations with the same ACLs, so even if reachable, it would not bypass LDAP access controls for j.arbuckle.
-  Findings: 3 new
-  Summary: ldapsearch on 9389: 'Can't contact LDAP server (-1)' — port does not speak LDAP.
-.NET Message Framing probes (both Singleton-Unsized and Duplex modes): ConnectionResetError [Errno 104] — server resets
-  Branch marked dead: adws-9389-enumeration (hard block)
+  Dead branches: 35
+  Surface entries: 77
+  Tested entries: 107
+  Compacting state (33327 chars > 20000 threshold)...
+  Plan: [exploit] scriptpath-unc-attacker-ip
+  Hypothesis: Setting l.wilson scriptPath to a UNC path pointing to attacker IP (\\10.10.17.114\share\x.bat) instead of a SYSVOL path will trigger NTLMv2 auth capture when the scheduled mechanism fires, because the original capture worked with responder and the mechanism may resolve attacker-controlled UNC paths differently than SYSVOL paths
+  DRIFT KILL: Hard tool limit (10) exceeded
+  Verdict: inconclusive
+  Block: soft — Drift: Hard tool limit (10) exceeded
+  Summary: Executor killed: Hard tool limit (10) exceeded. 11 tool calls, 0 findings from stream.
 
 ============================================================
-  Iteration 4
+  Iteration 2
 ============================================================
   Phase: exploit
-  Dead branches: 32
-  Surface entries: 76
-  Tested entries: 100
-  Compacting state (32412 chars > 20000 threshold)...
-  Plan: [exploit] force-password-change-lwilson
-  Hypothesis: j.arbuckle has ForceChangePassword extended right on l.wilson (distinct from WriteProp), allowing us to set l.wilson's password and gain WinRM access
-  Verdict: denied
-  Block: hard — j.arbuckle lacks ForceChangePassword / User-Force-Change-Password extended right on l.wilson. The WriteProp on scriptPath does not grant password reset capability. NT_STATUS_ACCESS_DENIED is a definitive ACL denial, not a syntax or connectivity issue.
-  Findings: 1 new
-  Summary: result: NT_STATUS_ACCESS_DENIED
-result was NT_STATUS_ACCESS_DENIED
-  Branch marked dead: force-password-change-lwilson (hard block)
-
-Orchestrator finished after 5 iterations.
-Log: /htb/machines/garfield/logs/orchestrator.jsonl
+  Dead branches: 36
+  Surface entries: 77
+  Tested entries: 109
+  Compacting state (33585 chars > 20000 threshold)...
+  Plan: [exploit] scriptpath-different-users-unc-direct
+  Hypothesis: The scheduled task that processes scriptPath runs as a user OTHER than l.wilson (e.g. l.wilson_adm or administrator). Setting scriptPath to a direct UNC path (\\10.10.17.114\share\trigger.bat) on l.wilson_adm will trigger an NTLM auth callback to our listener.

