@@ -1,0 +1,8 @@
+[10:17:37] RUN: ldapsearch -H ldap://10.129.17.178:3268 -D 'j.arbuckle@garfield.htb' -w 'Th1sD4mnC4t!@1978' -b 'DC=garfield,DC=htb' '(|(sAMAccountName=l.wilson)(sAMAccountName=l.wilson_adm)(sAMAccountName=administrator))' '*' '+' 2>&1 | head -200
+[10:17:39] RUN: curl -sk --max-time 10 https://10.129.17.178:593/ 2>&1; echo "---"; curl -s --max-time 10 http://10.129.17.178:593/ 2>&1; echo "---"; nmap -sV -p 593,9389 --version-intensity 5 -Pn 10.129.17.178 2>&1 | tail -20
+[10:18:44] RUN: nmap -p- --min-rate 5000 -Pn 10.129.17.178 -oN /htb/machines/garfield/scans/full-tcp-178.txt 2>&1
+[10:19:53] RUN: impacket-rpcdump 'garfield.htb/j.arbuckle:Th1sD4mnC4t!@1978@10.129.17.178' -port 593 2>&1 | head -200
+[10:19:59] RUN: impacket-rpcdump 'garfield.htb/j.arbuckle:Th1sD4mnC4t!@1978@10.129.17.178' -port 593 2>&1 | grep -E 'ncacn_http|ncacn_ip_tcp|ncacn_np|Protocol:|UUID' | head -80
+[10:20:04] RUN: impacket-rpcdump 'garfield.htb/j.arbuckle:Th1sD4mnC4t!@1978@10.129.17.178' -port 593 2>&1 | grep -c 'ncacn_http'
+[10:20:07] RUN: impacket-rpcdump 'garfield.htb/j.arbuckle:Th1sD4mnC4t!@1978@10.129.17.178' -port 593 2>&1 | grep -B5 'ncacn_http'
+[10:20:53] RUN: nmap -p- --min-rate 3000 -Pn 10.129.17.178 -oN /htb/machines/garfield/scans/full-tcp-178.txt 2>&1

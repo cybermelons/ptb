@@ -7,3 +7,42 @@
   Surface entries: 43
   Tested entries: 88
   Compacting state (22129 chars > 20000 threshold)...
+  Plan: [recon] full-port-scan-current-ip
+  Hypothesis: A full TCP port scan of 10.129.17.178 will reveal services not found in previous default scans on older IPs, potentially exposing new attack surface
+  Verdict: confirmed
+  Findings: 5 new
+  Summary: 22 open ports found. Known ports: 53,88,135,389,445,593,636,2179,3268,3269,3389,5985,9389. New ports: 139(netbios-ssn), 464(kpasswd5), 49667,49670,49671,49673,49674,49899,49979 (high RPC). Hostname co
+
+============================================================
+  Iteration 1
+============================================================
+  Phase: exploit
+  Dead branches: 28
+  Surface entries: 53
+  Tested entries: 91
+  Compacting state (25622 chars > 20000 threshold)...
+  Plan: [enumerate] full-tcp-scan-current-ip
+  Hypothesis: A full 65535-port TCP scan on 10.129.17.178 will reveal additional services on high ports not found in the initial top-ports scan, potentially exposing web apps, databases, or management interfaces
+=====================
+  Phase: exploit
+  Dead branches: 28
+  Surface entries: 48
+  Tested entries: 90
+  Compacting state (24183 chars > 20000 threshold)...
+  Plan: [enumerate] rpc-over-http-enum
+  Hypothesis: RPC-over-HTTP endpoint (port 593) exposes RPC interfaces accessible to j.arbuckle that could enable remote management operations (remote registry, service control, DCOM) tunneled over HTTP, bypassing SMB-only restrictions
+  Verdict: denied
+  Block: hard — RPC-over-HTTP (port 593/49670) exposes the same DRSR/SAMR/LSARPC interfaces already accessible via port 135/445. No additional management interfaces (remote registry, SVCCTL, task scheduler, DCOM) are uniquely available over HTTP. DRSR (DCSync) requires replication privileges j.arbuckle does not have. This transport adds no new attack surface beyond existing SMB/RPC access.
+  Findings: 2 new
+  Summary: 9 RPC interfaces bound to ncacn_http on port 49670. Key interfaces exposed over HTTP:
+- [MS-DRSR] E3514235-4B06-11D1-AB04-00C04FC2DCD2 v4.0 (Directory Replication Service) via ntdsai.dll — DCSync inte
+  Branch marked dead: rpc-over-http-enum (hard block)
+
+============================================================
+  Iteration 2
+============================================================
+  Phase: exploit
+  Dead branches: 29
+  Surface entries: 55
+  Tested entries: 93
+  Compacting state (26472 chars > 20000 threshold)...
