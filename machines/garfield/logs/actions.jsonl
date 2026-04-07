@@ -228,3 +228,5 @@
 {"action":"ntlmrelayx+petitpotam relay to winrm","target":"10.129.17.178","timestamp":"2026-04-07T09:49:32Z"}
 {"action":"ntlmrelayx to WinRM + PetitPotam coercion","target":"10.129.17.178:5985","hypothesis":"WinRM does not enforce EPA, allowing NTLM relay from PetitPotam coercion","timestamp":"2026-04-07T09:54:36+00:00"}
 {"action": "pkill -f \"engine.py\" 2>/dev/null; pkill -f \"claude.*stream\" 2>/dev/null; pkill -f ntlmrelayx 2>/dev/null; sleep 1; echo \"cleaned\"", "ts": "2026-04-07T10:04:38Z"}
+{"action":"l.wilson_adm post-shell survey: whoami /all, net user, hostname, systeminfo, net localgroup administrators, klist","ts":"2026-04-07T10:53:56Z"}
+{"action":"test ForceChangePassword on RODC01$ via l.wilson_adm using bloodyAD","ts":"2026-04-07T11:00:20Z"}

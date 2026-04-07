@@ -3,55 +3,9 @@
   Iteration 0
 ============================================================
   Phase: exploit
-  Dead branches: 36
-  Surface entries: 77
-  Tested entries: 110
-  Compacting state (33519 chars > 20000 threshold)...
-  Plan: [exploit] rpc-task-scheduler-enumerate-and-trigger
-  Hypothesis: j.arbuckle can enumerate scheduled tasks on DC01 via the ITaskSchedulerService RPC interface and trigger the task that processes scriptPath/logon scripts, causing Responder to capture credentials
-  DRIFT KILL: Hard tool limit (10) exceeded
-  Verdict: inconclusive
-  Block: soft — Drift: Hard tool limit (10) exceeded
-  Summary: Executor killed: Hard tool limit (10) exceeded. 11 tool calls, 0 findings from stream.
-
-============================================================
-  Iteration 1
-============================================================
-  Phase: exploit
-  Dead branches: 36
-  Surface entries: 77
-  Tested entries: 111
-  Compacting state (33519 chars > 20000 threshold)...
-  Plan: [enumerate] rpc-task-scheduler-enum
-  Hypothesis: j.arbuckle can enumerate scheduled tasks via ITaskSchedulerService RPC, revealing a task that processes logon scripts or scriptPath — knowing its trigger lets us force-fire it
-  Verdict: denied
-  Block: hard — j.arbuckle lacks read permissions on ITaskSchedulerService. SchRpcEnumTasks returns rpc_s_access_denied at root level, and the pipe is disconnected by the server after the denied call, preventing any further task enumeration. This is a permission-based hard block - non-admin users typically cannot enumerate tasks on a DC.
-  Findings: 1 new
-  Summary: [+] Connected to Task Scheduler RPC
-[-] EnumTasks \: rpc_s_access_denied
-[-] EnumFolders \: SMB SessionError: code: 0xc00000b0 - STATUS_PIPE_DISCONNECTED
-  Branch marked dead: rpc-task-scheduler-enum (hard block)
-
-============================================================
-  Iteration 2
-============================================================
-  Phase: exploit
   Dead branches: 37
   Surface entries: 78
-  Tested entries: 115
-  Compacting state (33962 chars > 20000 threshold)...
-  Plan: [enumerate] trigger-scheduled-task-via-rpc-subfolder
-  Hypothesis: Task Scheduler RPC enum failed at root level but specific subfolder paths (e.g. \Microsoft\Windows\) may be readable by j.arbuckle, revealing a triggerable task that processes scriptPath or runs printerDetect.bat
-  DRIFT KILL: Script rewrite drift: /htb/machines/garfield/exploits/enum_tasks.py written 3 times
-  Verdict: inconclusive
-  Block: soft — Drift: Script rewrite drift: /htb/machines/garfield/exploits/enum_tasks.py written 3 times
-  Summary: Executor killed: Script rewrite drift: /htb/machines/garfield/exploits/enum_tasks.py written 3 times. 6 tool calls, 0 findings from stream.
-
-============================================================
-  Iteration 3
-============================================================
-  Phase: exploit
-  Dead branches: 37
-  Surface entries: 78
-  Tested entries: 117
-  Compacting state (34012 chars > 20000 threshold)...
+  Tested entries: 121
+  Compacting state (34258 chars > 20000 threshold)...
+  Plan: [post_exploit] rodc01-password-reset-via-lwilson_adm
+  Hypothesis: l.wilson_adm has ForceChangePassword rights on the RODC01$ machine account, allowing us to reset its password and take control of the RODC

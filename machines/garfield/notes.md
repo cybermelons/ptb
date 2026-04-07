@@ -341,3 +341,7 @@ On instances 2-5, we set scriptPath ONCE and waited. It probably fired once but 
 
 ### Creds
 - l.wilson_adm : P@ssw0rd2026! (Tier 1, Remote Management Users, Remote Desktop Users)
+
+## 10:55 — USER FLAG
+f1ad2ce1429fe8a175400db776ed4ed4
+Location: C:\Users\l.wilson_adm\Desktop\user.txt
