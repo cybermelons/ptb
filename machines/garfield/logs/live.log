@@ -70,3 +70,6 @@ cat /tmp/responder_out.txt 2>/dev/null || true
 [10:50:04] WRITE: /htb/machines/garfield/exploits/enum_tasks.py
 [10:50:07] GLOB: /htb/machines/garfield/exploits/enum_tasks.py
 [10:50:09] READ: /htb/machines/garfield/exploits/enum_tasks.py
+[10:50:25] WRITE: /htb/machines/garfield/exploits/enum_tasks.py
+[10:50:28] RUN: python3 exploits/enum_tasks.py 2>&1
+[10:50:43] WRITE: /htb/machines/garfield/exploits/enum_tasks.py

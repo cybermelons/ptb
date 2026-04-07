@@ -330,3 +330,14 @@ On instances 2-5, we set scriptPath ONCE and waited. It probably fired once but 
 2. Toggle scriptPath to trigger
 3. Poll for l.wilson_adm password change
 4. If password changes → WinRM as l.wilson_adm → continue chain
+
+## 10:51 — l.wilson_adm PASSWORD CHANGED + WINRM SHELL
+
+### Attack chain executed:
+1. Set printerDetect.bat = PowerShell Set-ADAccountPassword -Identity l.wilson_adm -Reset
+2. Toggle l.wilson scriptPath to trigger logon task
+3. Bat fired within seconds, changed l.wilson_adm password to P@ssw0rd2026!
+4. WinRM confirmed: Pwn3d!
+
+### Creds
+- l.wilson_adm : P@ssw0rd2026! (Tier 1, Remote Management Users, Remote Desktop Users)
