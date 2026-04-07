@@ -23,26 +23,50 @@
   Compacting state (25622 chars > 20000 threshold)...
   Plan: [enumerate] full-tcp-scan-current-ip
   Hypothesis: A full 65535-port TCP scan on 10.129.17.178 will reveal additional services on high ports not found in the initial top-ports scan, potentially exposing web apps, databases, or management interfaces
-=====================
-  Phase: exploit
-  Dead branches: 28
-  Surface entries: 48
-  Tested entries: 90
-  Compacting state (24183 chars > 20000 threshold)...
-  Plan: [enumerate] rpc-over-http-enum
-  Hypothesis: RPC-over-HTTP endpoint (port 593) exposes RPC interfaces accessible to j.arbuckle that could enable remote management operations (remote registry, service control, DCOM) tunneled over HTTP, bypassing SMB-only restrictions
   Verdict: denied
-  Block: hard — RPC-over-HTTP (port 593/49670) exposes the same DRSR/SAMR/LSARPC interfaces already accessible via port 135/445. No additional management interfaces (remote registry, SVCCTL, task scheduler, DCOM) are uniquely available over HTTP. DRSR (DCSync) requires replication privileges j.arbuckle does not have. This transport adds no new attack surface beyond existing SMB/RPC access.
-  Findings: 2 new
-  Summary: 9 RPC interfaces bound to ncacn_http on port 49670. Key interfaces exposed over HTTP:
-- [MS-DRSR] E3514235-4B06-11D1-AB04-00C04FC2DCD2 v4.0 (Directory Replication Service) via ntdsai.dll — DCSync inte
-  Branch marked dead: rpc-over-http-enum (hard block)
+  Findings: 10 new
+  Summary: 22 open ports total. Known ports: 53,88,135,139,389,445,464,593,636,2179,3268,3389,5985,9389. New ports: 3269 (globalcatLDAPssl), 49667,49670,49671,49673,49674,49899,49979 (unknown high ports, likely 
 
 ============================================================
   Iteration 2
 ============================================================
   Phase: exploit
   Dead branches: 29
+  Surface entries: 65
+  Tested entries: 94
+  Compacting state (28982 chars > 20000 threshold)...
+  Plan: [recon] full-tcp-scan-178
+  Hypothesis: Full TCP port scan on 10.129.17.178 reveals additional services not seen on previous IPs (.228/.44) that open new attack surface
+  Verdict: denied
+  Findings: 8 new
+  Summary: 22 open ports on DC01.garfield.htb (10.129.17.178): 53(dns), 88(kerberos), 135(msrpc), 139(netbios-ssn), 389(ldap), 445(smb), 464(kpasswd5), 593(http-rpc-epmap), 636(ldapssl), 2179(vmrdp), 3268(global
+
+============================================================
+  Iteration 3
+============================================================
+  Phase: exploit
+  Dead branches: 29
+  Surface entries: 73
+  Tested entries: 96
+  Compacting state (31143 chars > 20000 threshold)...
+==================================================
+  Phase: exploit
+  Dead branches: 29
   Surface entries: 55
   Tested entries: 93
   Compacting state (26472 chars > 20000 threshold)...
+  Plan: [enumerate] hyper-v-vmrdp-console-access
+  Hypothesis: Port 2179 (vmrdp) allows j.arbuckle to enumerate or connect to Hyper-V VM consoles — specifically RODC01 — bypassing the unreachable 192.168.100.0/24 internal network. vmrdp console access uses different ACLs than WMI management (which is the dead branch).
+  DRIFT KILL: Hard tool limit (10) exceeded
+  Verdict: inconclusive
+  Block: soft — Drift: Hard tool limit (10) exceeded
+  Summary: Executor killed: Hard tool limit (10) exceeded. 11 tool calls, 0 findings from stream.
+
+============================================================
+  Iteration 3
+============================================================
+  Phase: exploit
+  Dead branches: 29
+  Surface entries: 65
+  Tested entries: 95
+  Compacting state (28982 chars > 20000 threshold)...

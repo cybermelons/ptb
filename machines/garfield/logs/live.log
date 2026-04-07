@@ -6,3 +6,74 @@
 [10:20:04] RUN: impacket-rpcdump 'garfield.htb/j.arbuckle:Th1sD4mnC4t!@1978@10.129.17.178' -port 593 2>&1 | grep -c 'ncacn_http'
 [10:20:07] RUN: impacket-rpcdump 'garfield.htb/j.arbuckle:Th1sD4mnC4t!@1978@10.129.17.178' -port 593 2>&1 | grep -B5 'ncacn_http'
 [10:20:53] RUN: nmap -p- --min-rate 3000 -Pn 10.129.17.178 -oN /htb/machines/garfield/scans/full-tcp-178.txt 2>&1
+[10:22:45] RUN: echo '' | timeout 10 ncat --ssl 10.129.17.178 2179 2>&1 | xxd | head -20; echo "---EXIT:$?---"
+[10:22:45] RUN: echo '' | timeout 10 ncat 10.129.17.178 2179 2>&1 | xxd | head -20; echo "---EXIT:$?---"
+[10:22:46] RUN: timeout 15 xfreerdp /v:10.129.17.178:2179 /u:j.arbuckle /p:'Th1sD4mnC4t!@1978' /d:garfield.htb /cert:ignore +auth-only 2>&1; echo "---EXIT:$?---"
+[10:22:51] RUN: echo '' | timeout 10 ncat 10.129.17.178 2179 2>&1 | od -A x -t x1z | head -20; echo "---EXIT:$?---"
+[10:22:52] RUN: apt-get install -y freerdp2-x11 2>&1 | tail -5
+[10:22:57] RUN: echo '' | timeout 10 nc -w 5 10.129.17.178 2179 2>&1 | od -A x -t x1z | head -20; echo "---EXIT:$?---"
+[10:22:57] RUN: sudo apt-get install -y freerdp2-x11 2>&1 | tail -5
+[10:23:05] RUN: which nmap python3 curl 2>&1; python3 -c "
+import socket, sys
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.settimeout(10)
+s.connect(('10.129.17.178', 2179))
+# Send RDP negotiation request (Cookie + NEG_REQ)
+rdp_neg = bytes.fromhex('030000130ee00000000000010008000300000000')
+s.send(rdp_neg)
+data = s.recv(4096)
+print('Received {} bytes'.format(len(data)))
+print('Hex:', data.hex())
+print('ASCII:', repr(data))
+s.close()
+" 2>&1; echo "---EXIT:$?---"
+[10:23:10] RUN: python3 -c "
+import socket
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.settimeout(10)
+s.connect(('10.129.17.178', 2179))
+# Just wait for banner
+import select
+ready = select.select([s], [], [], 5)
+if ready[0]:
+    data = s.recv(4096)
+    print('Banner ({} bytes): {}'.format(len(data), data.hex()))
+    print('ASCII:', repr(data))
+else:
+    print('No banner received in 5s, sending probe...')
+    # Try sending HTTP probe
+    s.send(b'GET / HTTP/1.0\r\n\r\n')
+    data = s.recv(4096)
+    print('HTTP response ({} bytes): {}'.format(len(data), repr(data)))
+s.close()
+" 2>&1; echo "---EXIT:$?---"
+[10:23:12] RUN: sudo nmap -sV -p 2179 --script=rdp-enum-encryption,rdp-ntlm-info 10.129.17.178 2>&1; echo "---EXIT:$?---"
+[10:23:33] RUN: nmap -p- -sS --min-rate 3000 -Pn 10.129.17.178 -oN /htb/machines/garfield/scans/full-tcp-178.txt 2>&1
+[10:23:46] RUN: python3 -c "
+import socket
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.settimeout(10)
+s.connect(('10.129.17.178', 2179))
+# vmrdp uses a custom protocol - try sending the Hyper-V VM connect magic
+# The protocol starts with a VM GUID negotiation
+# Send minimal bytes to see what error we get
+s.send(b'\x00\x00\x00\x00')
+import select
+ready = select.select([s], [], [], 5)
+if ready[0]:
+    data = s.recv(4096)
+    print('Response ({} bytes): {}'.format(len(data), data.hex()))
+    print('ASCII:', repr(data))
+else:
+    print('No response after 4 null bytes')
+    # Try more data
+    s.send(b'\x01' * 16)
+    ready2 = select.select([s], [], [], 5)
+    if ready2[0]:
+        data = s.recv(4096)
+        print('Response2 ({} bytes): {}'.format(len(data), data.hex()))
+    else:
+        print('Still no response')
+s.close()
+" 2>&1; echo "---EXIT:$?---"
+[10:24:21] RUN: nmap -p 53,88,3389,5985 -sV -Pn 10.129.17.178 2>&1 | head -30

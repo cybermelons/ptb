@@ -125,3 +125,103 @@
 3. Can we fix krbrelayx port binding and do Kerberos-to-LDAP relay?
 4. Is there a Hyper-V attack vector via port 2179?
 5. What is the ACTUAL intended path on this hard box?
+
+## 10:00 — Engine Run (pentest-engine v2 with drift detection + compaction)
+
+### Iteration 0: WinRM Relay
+- Plan: relay PetitPotam coercion to WinRM (port 5985) — EPA unknown
+- Result: ntlmrelayx started, PetitPotam "Attack worked!" but relay never received connection
+- Same issue as LDAP relay — coercion triggers but auth doesn't reach our listener
+- **HARD BLOCK: ALL NTLM relay is dead on this box**
+
+### Iteration 1: RODC PRG Membership Write
+- Plan: add l.wilson to Allowed RODC Password Replication Group via WriteProp
+- Result: `insufficientAccessRights` — WriteProp on RODC PRG is for scriptPath (bf9679a8), NOT member
+- Earlier surface entry was WRONG: misidentified bf9679a8 as "member" attribute
+- **HARD BLOCK: RODC PRG membership write denied**
+
+### Iteration 2: Global Catalog Sensitive Attrs  
+- Plan: query GC (3268) for userPassword/msSFU30Password/confidential attrs
+- Result: same attribute set as LDAP 389, no extra creds
+- Found: RPC-HTTP on 593, ADWS on 9389, confirmed RODC01 has Admin revealed
+- **HARD BLOCK: GC adds no new data**
+
+### Iteration 3: RPC-over-HTTP
+- Plan: enumerate RPC interfaces over HTTP (port 593)  
+- Result: 9 interfaces including DCSync (MS-DRSR), SAMR, LSARPC on HTTP port 49670
+- But j.arbuckle lacks replication rights — same interfaces as SMB, no new access
+- **HARD BLOCK: HTTP transport adds no new capabilities**
+
+### Iteration 4: pending...
+- 29 dead branches, 93 tested entries
+- Engine compacting state (26KB → ~8KB via LLM)
+
+### Key Observations from Engine Run
+- Drift detection working: killed 2 executors at 10-tool limit (WinRM relay, RODC PRG)
+- LLM compaction working: 38KB→4KB tested, 10KB→1.5KB surface
+- Planner quality good with comprehensive hint — picking genuinely new angles
+- Main bottleneck: planner calls (20-80s each), compaction overhead
+- The bf9679a8 = scriptPath (NOT member) was a critical correction from the engine's ACL audit
+
+### Iteration 4: Full TCP Scan (.178)
+- Plan: full port scan on correct IP
+- Result: 22 ports open. New: 139(netbios), 464(kpasswd5), high RPC ports
+- kpasswd5 on 464 — Kerberos password change service (potential alternate password change path?)
+
+### Iteration 5: RPC-over-HTTP (593)
+- Plan: enumerate RPC interfaces over HTTP
+- Result: 9 interfaces on ncacn_http port 49670 including:
+  - **MS-DRSR (DCSync)** via ntdsai.dll
+  - MS-LSAT, MS-SAMR, NETLOGON
+- j.arbuckle lacks replication rights so DCSync won't work
+- But: if we ever get higher-priv creds, HTTP transport bypasses SMB signing
+
+### Iteration 6: Global Catalog (3268)
+- Plan: query GC for sensitive/hidden attributes
+- Result: same attrs as LDAP 389, no extra creds
+- Confirmed RODC01 has Administrator in msDS-RevealedUsers
+
+### Iteration 7: Hyper-V vmrdp (2179)
+- Plan: check if j.arbuckle can access RODC01 VM console via vmrdp
+- **IN PROGRESS** — this is interesting because vmrdp uses different ACLs than WMI
+- If we can reach RODC01 console, we bypass the 192.168.100.0/24 routing issue
+
+### Running totals
+- 29 dead branches, 93 tested entries
+- Engine iterations taking ~2 min each with compaction
+- Planner making good picks now — systematically exploring new services
+
+### Iteration 7 result: Hyper-V vmrdp (2179)
+- Executor ran 10 tool calls: ncat, xfreerdp, nc, python3, nmap rdp scripts
+- Result LOST — executor returned non-JSON, streaming parser didn't capture it
+- Need to re-test manually: nmap -sV -p 2179 --script=rdp-enum-encryption,rdp-ntlm-info 10.129.17.178
+
+### Iteration 8: Full TCP scan (.178) — drift killed
+- Same scan we already did manually — 22 ports, nothing new
+- Drift killed at 10 tools
+
+### Engine bug identified
+- When executor's claude -p returns non-JSON, the streaming parser drops the entire result
+- Need to capture the final text even if it doesn't validate as JSON
+
+### Hyper-V 2179 manual test
+- Port accepts TCP connections but no banner — waits for protocol handshake
+- nmap: "vmrdp?" — can't fingerprint, no RDP scripts trigger
+- This is Hyper-V VM Connect protocol, not standard RDP
+- Would need Hyper-V management tools (Windows-only) to interact
+- **Likely dead end for Linux-based attacker — but confirms RODC01 is a Hyper-V VM**
+
+### Iteration 4 (manual): Full Port Scan .178
+- 22 open ports, all standard AD DC services
+- No new attack surface — same ports as .228/.44
+- vmrdp 2179 confirmed open, kpasswd 464, HTTP-RPC 593, ADWS 9389
+
+### Summary after 5 engine iterations + manual scan
+Dead ends: 30+. All standard AD attack paths exhausted.
+Still alive:
+1. scriptPath write (works but logon sim never fires)
+2. PetitPotam coercion (works but relay fails everywhere)
+3. FAKEPC$ machine account (SPN + DNS, but can't get anyone to auth to it)
+4. DNS write (can create records, but no traffic to poison)
+
+The box seems designed around triggering l.wilson's logon. We captured her hash ONCE on the first instance but it never fired again across 5+ resets. The SeBatchLogonRight GPO confirms a mechanism exists. What triggers it?
