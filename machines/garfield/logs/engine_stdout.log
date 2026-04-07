@@ -3,12 +3,12 @@
   Iteration 0
 ============================================================
   Phase: exploit
-  Dead branches: 35
+  Dead branches: 36
   Surface entries: 77
-  Tested entries: 106
-  Compacting state (33327 chars > 20000 threshold)...
-  Plan: [exploit] kpasswd5-set-password-lwilson
-  Hypothesis: j.arbuckle can set l.wilson's password via Kerberos kpasswd5 (port 464) using the set-password-on-behalf protocol, which uses different authorization checks than SAMR ForceChangePassword
+  Tested entries: 110
+  Compacting state (33519 chars > 20000 threshold)...
+  Plan: [exploit] rpc-task-scheduler-enumerate-and-trigger
+  Hypothesis: j.arbuckle can enumerate scheduled tasks on DC01 via the ITaskSchedulerService RPC interface and trigger the task that processes scriptPath/logon scripts, causing Responder to capture credentials
   DRIFT KILL: Hard tool limit (10) exceeded
   Verdict: inconclusive
   Block: soft — Drift: Hard tool limit (10) exceeded
@@ -18,24 +18,27 @@
   Iteration 1
 ============================================================
   Phase: exploit
-  Dead branches: 35
+  Dead branches: 36
   Surface entries: 77
-  Tested entries: 107
-  Compacting state (33327 chars > 20000 threshold)...
-  Plan: [exploit] scriptpath-unc-attacker-ip
-  Hypothesis: Setting l.wilson scriptPath to a UNC path pointing to attacker IP (\\10.10.17.114\share\x.bat) instead of a SYSVOL path will trigger NTLMv2 auth capture when the scheduled mechanism fires, because the original capture worked with responder and the mechanism may resolve attacker-controlled UNC paths differently than SYSVOL paths
-  DRIFT KILL: Hard tool limit (10) exceeded
-  Verdict: inconclusive
-  Block: soft — Drift: Hard tool limit (10) exceeded
-  Summary: Executor killed: Hard tool limit (10) exceeded. 11 tool calls, 0 findings from stream.
+  Tested entries: 111
+  Compacting state (33519 chars > 20000 threshold)...
+  Plan: [enumerate] rpc-task-scheduler-enum
+  Hypothesis: j.arbuckle can enumerate scheduled tasks via ITaskSchedulerService RPC, revealing a task that processes logon scripts or scriptPath — knowing its trigger lets us force-fire it
+  Verdict: denied
+  Block: hard — j.arbuckle lacks read permissions on ITaskSchedulerService. SchRpcEnumTasks returns rpc_s_access_denied at root level, and the pipe is disconnected by the server after the denied call, preventing any further task enumeration. This is a permission-based hard block - non-admin users typically cannot enumerate tasks on a DC.
+  Findings: 1 new
+  Summary: [+] Connected to Task Scheduler RPC
+[-] EnumTasks \: rpc_s_access_denied
+[-] EnumFolders \: SMB SessionError: code: 0xc00000b0 - STATUS_PIPE_DISCONNECTED
+  Branch marked dead: rpc-task-scheduler-enum (hard block)
 
 ============================================================
   Iteration 2
 ============================================================
   Phase: exploit
-  Dead branches: 36
-  Surface entries: 77
-  Tested entries: 109
-  Compacting state (33585 chars > 20000 threshold)...
-  Plan: [exploit] scriptpath-different-users-unc-direct
-  Hypothesis: The scheduled task that processes scriptPath runs as a user OTHER than l.wilson (e.g. l.wilson_adm or administrator). Setting scriptPath to a direct UNC path (\\10.10.17.114\share\trigger.bat) on l.wilson_adm will trigger an NTLM auth callback to our listener.
+  Dead branches: 37
+  Surface entries: 78
+  Tested entries: 115
+  Compacting state (33962 chars > 20000 threshold)...
+  Plan: [enumerate] trigger-scheduled-task-via-rpc-subfolder
+  Hypothesis: Task Scheduler RPC enum failed at root level but specific subfolder paths (e.g. \Microsoft\Windows\) may be readable by j.arbuckle, revealing a triggerable task that processes scriptPath or runs printerDetect.bat

