@@ -474,3 +474,36 @@ The temp files existed but we couldn't read them to confirm the content.
 - Clean bat that writes Invoke-Command output + errors to C:\Users\Public
 - Test if C:\Users\Public is writable by logon scripts
 - If Invoke-Command fails, may need to use the SMB share approach with port 445 free
+
+## 09:10 — Method Review
+
+### The core issue with root exfil:
+We've been trying to use Invoke-Command from l.wilson's logon script to reach RODC01. 
+But we have ZERO evidence it works. The temp files we saw earlier (root_flag.txt, rf2.txt) 
+might have been empty or contained errors — we couldn't read them.
+
+### What we KNOW works:
+1. Bat fires on scriptPath toggle ✓
+2. Bat can write to C:\Windows\Temp ✓  
+3. Bat can run PowerShell ✓
+4. l.wilson has real Kerberos TGT in logon script context
+5. DC01 can reach RODC01 (192.168.100.2) ✓
+6. l.wilson is in Remote Management Users domain-wide
+
+### What we DON'T know:
+1. Does Invoke-Command from l.wilson's logon script to RODC01 actually succeed?
+2. Does the logon script have delegation rights to RODC01?
+3. Is root.txt actually on RODC01?
+
+### Rethinking the approach:
+Maybe the root flag ISN'T on RODC01. We assumed it is because Admin profile 
+doesn't exist on DC01. But what if:
+- Admin profile gets created when we log in as Admin
+- We need to actually BECOME admin, not just read the flag
+- The RBCD S4U altservice approach was close but needs refinement
+
+### New idea: combo bat approach
+Upload ONE bat that does BOTH password change AND exfil in a single trigger.
+This conserves the trigger mechanism. If Invoke-Command fails silently,
+the SMB callback (dir \\attacker\share) will still fire — proving the bat ran.
+If we get the SMB callback but no root.txt, we know Invoke-Command failed.
