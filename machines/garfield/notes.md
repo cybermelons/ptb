@@ -1187,3 +1187,107 @@ that triggers the logon runs as SYSTEM and we can modify it?
 ### What about abusing the RODC's trust relationship differently?
 RODC01$ is in Domain Controllers. Maybe we can forge a ticket 
 using RODC01$'s OWN key (not krbtgt_8245) that the DC trusts.
+
+## 11:17 — Deep System Analysis
+
+### Assets as interconnected system:
+
+```
+j.arbuckle ──WriteProp(scriptPath)──→ ALL CN=Users objects
+    │                                      │
+    └──SYSVOL write──→ bat files           │
+                          │                │
+l.wilson ←──scriptPath trigger──┘          │
+    │                                      │
+    ├── Interactive Kerberos TGT           │
+    ├── HTTP exfil (port 8080)             │
+    ├── ForceChangePassword → l.wilson_adm │
+    │                                      │
+l.wilson_adm ←─────────────────────────────┘
+    │
+    ├── WinRM on DC01 (PowerShell)
+    ├── ForceChangePassword → RODC01$
+    ├── WriteAccountRestrictions → RODC01$ (userAccountControl)
+    ├── Set-ADAccountPassword with -Credential (LDAP bind as any user)
+    │
+RODC01$ (Kerberos works: Rodc2026!)
+    │
+    ├── ForceChangePassword → krbtgt_8245
+    ├── Domain Controllers group member
+    ├── SMB auth to DC01 (non-admin)
+    │
+krbtgt_8245 (password changed, kvno=3, DISABLED)
+    │
+    └── Keys exist but BAD_INTEGRITY on all local computations
+    
+PWNED$ machine account
+    │
+    ├── RBCD delegation to RODC01$
+    └── S4U → Administrator@cifs/RODC01$ ticket
+```
+
+### Compound effects I haven't tried:
+
+1. **RODC01$ is in Domain Controllers group.**
+   Domain Controllers have `Replicating Directory Changes` by default.
+   secretsdump as RODC01$ returned ACCESS_DENIED earlier.
+   BUT: that was before we changed RODC01$'s password via PowerShell.
+   On THAT attempt, RODC01$ used rpcclient-set password (broken Kerberos).
+   NOW RODC01$ has PowerShell-set password with WORKING Kerberos.
+   **Try secretsdump as RODC01$ AGAIN with the new working creds.**
+
+2. **The S4U Administrator@cifs/RODC01$ ticket.**
+   This ticket has Administrator's PAC (group memberships: Domain Admins).
+   What if we IMPORT this ticket into a Windows session and use it?
+   The bat runs as l.wilson — can we inject the ticket via Rubeus?
+   Or: can we use the ticket for LDAP operations (not just CIFS)?
+
+3. **RODC01$ has TRUSTED_TO_AUTH_FOR_DELEGATION (T2A4D) already set.**
+   T2A4D + valid TGT = can S4U2Self as ANY user.
+   RODC01$ can forge a service ticket for itself impersonating Administrator.
+   This is DIFFERENT from PWNED$'s RBCD — this is direct S4U2Self.
+   getST.py -self -impersonate Administrator garfield.htb/RODC01$:Rodc2026!
+   This gives an Administrator ticket for RODC01$'s own services.
+   Then use -altservice to rewrite to cifs/DC01... which failed before.
+   BUT: with T2A4D, the ticket has different flags/properties.
+
+4. **RODC01$ with T2A4D + msDS-AllowedToDelegateTo.**
+   T2A4D means protocol transition. If msDS-AllowedToDelegateTo was set 
+   (we got denied earlier via LDAP)... but what about via -Credential RODC01$?
+   RODC01$ might be able to set its OWN msDS-AllowedToDelegateTo.
+
+5. **The bat can run PowerShell as l.wilson with Kerberos TGT.**
+   What if the bat requests a TGT for RODC01$ (using known creds) and 
+   then uses that TGT for S4U operations? No double-hop because it's
+   a fresh Kerberos auth, not delegation.
+
+## 11:21 — Root attempt summary + what's left
+
+### Confirmed working:
+- l.wilson_adm WinRM on DC01
+- PowerShell Set-ADAccountPassword with -Credential (LDAP bind, no double-hop)
+- RODC01$ Kerberos creds working (Rodc2026! — getTGT confirmed)
+- RODC01$ T2A4D → S4U2Self as Administrator → ticket for RODC01$ services
+- Bat as l.wilson with HTTP exfil (port 8080)
+- krbtgt_8245 password changeable (kvno confirmed incrementing)
+
+### Confirmed DEAD:
+- keylistattack: BAD_INTEGRITY on ALL salts + ALL etypes + ALL kvno encodings (even with original impacket code)
+- secretsdump -rodcNo: BAD_DN
+- DCSync as RODC01$: ACCESS_DENIED (RODCs can't replicate)
+- altservice cross-machine: KRB_AP_ERR_MODIFIED (wrong encryption key)
+- PRG membership: ALL identities denied (j.arbuckle, l.wilson, l.wilson_adm, RODC01$)
+- Constrained delegation: msDS-AllowedToDelegateTo not writable by anyone
+- RBCD on DC01$: not writable by l.wilson_adm
+- UAC PARTIAL_SECRETS removal: denied
+- Invoke-Command/SMB to RODC01: hangs from all contexts
+- Local privesc on DC01: not admin, no useful privs
+- root.txt doesn't exist on DC01 until Admin logs in
+
+### Untested:
+1. Can the bat (l.wilson interactive) do S4U operations using RODC01$ keytab?
+2. Can we use RODC01$'s T2A4D to get an Administrator TGT (not service ticket)?
+3. What if we register RODC01$ as a DNS alias for DC01 and then the S4U ticket works?
+4. Can we use the bat to load mimikatz or Rubeus and inject the S4U ticket?
+5. Resource-based constrained delegation from RODC01$ to DC01 — can RODC01$ set RBCD on DC01$?
+6. Web research: is there a known technique for RODC with T2A4D to escalate to full DC?

@@ -270,3 +270,12 @@
 {"hypothesis":"RODC01$ can add members to its own Allowed RODC PRG","conclusion":"testing","ts":"2026-04-08T11:15:00Z"}
 {"hypothesis":"RODC01$ can add members to its own Allowed RODC PRG","conclusion":"denied","block_type":"hard","why":"Insufficient access rights. Even RODC01$ itself cant modify PRG membership.","ts":"2026-04-08T11:15:00Z"}
 {"hypothesis":"Original unmodified keylistattack with monkey-patched user list","conclusion":"denied","block_type":"hard","why":"BAD_INTEGRITY even with original createPartialTGT code. AES key fundamentally wrong. Earlier no-error observation was because empty PRG = no requests sent. The key derivation for krbtgt_8245 is broken/non-standard.","ts":"2026-04-08T11:16:00Z"}
+{"hypothesis":"secretsdump as RODC01$ with PowerShell-set working Kerberos creds","conclusion":"testing","ts":"2026-04-08T11:18:00Z"}
+{"hypothesis":"secretsdump as RODC01$ with working Kerberos","conclusion":"denied","block_type":"hard","why":"ACCESS_DENIED on DRSUAPI. RODC01$ has no replication rights regardless of auth method.","ts":"2026-04-08T11:18:00Z"}
+{"hypothesis":"RODC01$ T2A4D S4U2Self + altservice cifs/DC01","conclusion":"confirmed","evidence":"Ticket saved: Administrator@cifs_DC01.garfield.htb@GARFIELD.HTB.ccache","ts":"2026-04-08T11:19:00Z"}
+{"hypothesis":"secretsdump with T2A4D S4U altservice ticket","conclusion":"denied","block_type":"hard","why":"KRB_AP_ERR_MODIFIED. altservice rewrite: ticket encrypted with RODC01$ key, DC01 cant decrypt.","ts":"2026-04-08T11:19:00Z"}
+{"hypothesis":"RODC01$ sets its own msDS-AllowedToDelegateTo to cifs/DC01","conclusion":"testing","ts":"2026-04-08T11:20:00Z"}
+{"hypothesis":"RODC01$ sets own msDS-AllowedToDelegateTo","conclusion":"denied","block_type":"hard","why":"Insufficient access rights. Same as l.wilson_adm attempt. Nobody can set this attribute.","ts":"2026-04-08T11:20:00Z"}
+{"hypothesis":"Use Administrator@RODC01$ ticket with wmiexec against DC01 (SPN mismatch ignored by tool)","conclusion":"testing","ts":"2026-04-08T11:21:00Z"}
+{"hypothesis":"RODC01$ sets own msDS-AllowedToDelegateTo","conclusion":"denied","block_type":"hard","why":"Same result as l.wilson_adm. Nobody can set this.","ts":"2026-04-08T11:21:00Z"}
+{"hypothesis":"wmiexec with RODC01$ Administrator ticket against DC01","conclusion":"denied","block_type":"soft","why":"KDC_ERR_PREAUTH_FAILED. wmiexec needs TGT not service ticket.","ts":"2026-04-08T11:21:00Z"}

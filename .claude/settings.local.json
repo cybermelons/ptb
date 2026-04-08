@@ -19,7 +19,11 @@
       "Bash(git add:*)",
       "Bash(git rm:*)",
       "Bash(git commit -m ':*)",
-      "Bash(python3 -c \"from engine import run; print\\('OK'\\)\")"
+      "Bash(python3 -c \"from engine import run; print\\('OK'\\)\")",
+      "Bash(rm -rf __pycache__)",
+      "Bash(rm -f /htb/machines/garfield/logs/live.log)",
+      "Bash(nohup python3:*)",
+      "Bash(echo \"PID: $!\")"
     ]
   },
   "hooks": {
