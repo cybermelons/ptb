@@ -221,3 +221,6 @@
 {"hypothesis":"Bat exfil to local SYSVOL path","conclusion":"denied","block_type":"soft","why":"rootflag.txt never appears in SYSVOL. Either Invoke-Command fails inside bat or SYSVOL write from bat context is denied.","ts":"2026-04-08T08:59:00Z"}
 {"hypothesis":"Bat can write to SYSVOL","conclusion":"denied","block_type":"hard","why":"test_write.txt never appears. l.wilson cant write to SYSVOL local path from logon script.","ts":"2026-04-08T09:00:00Z"}
 {"hypothesis":"Exfil to Public/Temp/SYSVOL","conclusion":"denied","block_type":"soft","why":"Files created by l.wilson owned by l.wilson, l.wilson_adm cant read. Need append to existing file or different exfil.","ts":"2026-04-08T09:02:00Z"}
+{"hypothesis":"Invoke-Command fails inside logon script due to double-hop","conclusion":"testing","ts":"2026-04-08T09:05:00Z"}
+{"hypothesis":"l.wilson_adm cant read ANY l.wilson files due to WinRM restricted context","conclusion":"confirmed","ts":"2026-04-08T09:06:00Z"}
+{"hypothesis":"Bat trigger mechanism stopped on .167 after repeated toggles","conclusion":"confirmed","evidence":"No temp files created by recent bats. SMB server receives no connections. Mechanism fired earlier (l.wilson_adm password changed) but stopped responding to scriptPath changes.","ts":"2026-04-08T09:10:00Z"}
