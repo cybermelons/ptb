@@ -1,0 +1,62 @@
+# Garfield Pentest Results Summary
+
+## ✅ Confirmed Facts
+
+**Access Achieved:**
+- j.arbuckle:Th1sD4mnC4t!@1978 (SMB auth, read C$/ADMIN$/SYSVOL, WriteProp scriptPath)
+- l.wilson_adm:P@ssw0rd2026! (WinRM shell, DC01 command execution)
+- RODC01$:NewRodcPass123! (password reset via l.wilson_adm ForceChangePassword)
+- krbtgt_8245 password controlled; RBCD configured on RODC01$
+
+**Environment:**
+- DC01 (Windows 2019 AD), valid users: j.arbuckle, l.wilson, l.wilson_adm
+- SMB signing required, clock skew +8h
+- RODC01 WinRM open, reachable from DC01 via 192.168.100.2
+- No local admin foothold: l.wilson_adm is domain user only, no SeBackupPrivilege
+
+---
+
+## ❌ Hard Blocks (Do NOT Retry)
+
+| Category | Why Blocked |
+|----------|-----------|
+| **Local credential extraction** | l.wilson_adm non-admin on DC01; no SAM/LSA/cached-logon access |
+| **DCSync as RODC** | RODCs structurally lack DS-Replication-Get-Changes rights |
+| **Unconstrained delegation on RODC01** | AD forbids TRUSTED_FOR_DELEGATION on PARTIAL_SECRETS_ACCOUNT role |
+| **WinRM double-hop to RODC01** | NTLM (SMB auth) cannot delegate; Kerberos delegation unavailable in constrained session |
+| **Logon script trigger** | Tested 6+ instances, 60+ min cumulative polling; mechanism confirmed NOT firing (baked into box template only) |
+| **l.wilson_adm privilege escalation** | No local admin, no token abuses, no service write perms; blocked entirely |
+| **j.arbuckle ACLs** | WriteProp on scriptPath ONLY; no ForceChangePassword, no member writes, no add-to-group rights |
+| **Kerberos relay (NTLM→LDAP)** | DC requires SMB signing; LDAPS enforces channel binding |
+| **PrintNightmare/noPac CVEs** | Patched (KB5008602); account collision rejected |
+
+---
+
+## ⚠️ Soft Failures (Could Retry with Different Approach)
+
+| Blocker | Current Status | Alternative Path |
+|---------|----------------|------------------|
+| **l.wilson password spray** | Wordlist exhausted (40 Garfield-themed passwords failed) | Expand wordlist with more character names/years/mutations; try keyboard walks or custom rules |
+| **RODC golden ticket** | All 4 Kerberos salt variants produce KRB_AP_ERR_BAD_INTEGRITY; rpcclient password change produces unknown salt | Compute salt empirically via offline AD password verification, or brute-force salt space with hashcat |
+| **Bat exfiltration (scriptPath→RODC01)** | Invoke-Command hangs indefinitely in logon script context; UNC redirect/SYSVOL write blocked | Use RODC01$ machine account creds directly for SMB/WinRM instead of l.wilson double-hop |
+| **ADIDNS DNS resolution** | Records created in LDAP but DNS returns NXDOMAIN | Check record binary format (TTL byte order), verify zone serial on DC, or use DNS-over-RPC interface |
+| **krbtgt_8245 keylistattack** | Empty result (no cached secrets in PRG); all AES derivations fail | Confirm Administrator membership in msDS-RevealedUsers, enumerate actual cached objects, use original krbtgt_8245 key (before password reset) |
+| **Port binding tools** (ntlmrelayx, krbrelayx) | Claim "Servers started" but ports never bind; threading bug in Docker background | Use impacket alternatives (responder, raw socket listeners), or deploy on bare metal instead of container |
+
+---
+
+## 🤔 Still Inconclusive
+
+- **RODC cached secrets extraction**: S4U2Proxy tickets generated for Administrator→RODC01, but no valid method to extract secrets (DCSync blocked, key list empty, golden ticket failed). May require possession of original krbtgt_8245 AES key before password reset, or Administrator actually not cached on RODC.
+- **Root flag location**: Not at C:\Users\Administrator\Desktop; Administrator profile never created on DC01 (logonCount baked at Feb 14). May be on RODC01, in a different path, or in challenge metadata.
+
+---
+
+## 🎯 Recommendation
+
+**Stuck on RODC→root path.** Current position: l.wilson_adm WinRM on DC01 but cannot escalate without:
+1. **Original krbtgt_8245 key** to forge working RODC golden ticket → try restoring box to pristine state before password changes
+2. **Direct RODC01 access** (machine account or Kerberos ticket) to bypass WinRM double-hop
+3. **Root flag discovery** – verify if flag exists on DC01 or alternate location (RODC01, challenge metadata)
+
+**Widening branches:** Recon other services (port 593 RPC, 9389 ADWS) exhausted; no new AD attack surface found. Core blocker is structural (RODC role limits + Windows auth model constraints).

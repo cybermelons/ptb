@@ -1,3 +1,9 @@
-[script] Running: CONFIRM: does Invoke-Command to RODC01 work from l.wilson_adm WinRM session? Run: crackmapexec winrm
-[script] Verdict: denied
-[script] Summary: Invoke-Command to RODC01.garfield.htb: ERROR (empty message - classic double-hop/credential delegation failure). Test-WSMan RODC01.garfield.htb: SUCCESS - WinRM is open (ProductVendor: Microsoft Corporation, Stack: 3.0). Error details could not be extracted (output swallowed by CME).
+
+============================================================
+  Iteration 0
+============================================================
+  Phase: exploit
+  Dead branches: 55
+  Surface entries: 121
+  Tested entries: 229
+  Compacting state (17808 chars > 10000 threshold)...
