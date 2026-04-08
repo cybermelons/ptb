@@ -192,3 +192,5 @@
 {"hypothesis":"secretsdump -rodcNo BAD_DN with RODC01$ auth","conclusion":"denied","block_type":"soft","why":"Same BAD_DN. Impacket 0.13.0 RODC support may be buggy. DRSCrackNames succeeds but NCChanges request format wrong.","ts":"2026-04-07T20:00:00Z"}
 {"hypothesis":"DSInternals to extract krbtgt_8245 key","conclusion":"denied","block_type":"soft","why":"Empty output - likely cant install module or needs replication rights","ts":"2026-04-07T20:01:00Z"}
 {"hypothesis":"Modify msDS-RevealOnDemandGroup on RODC01$","conclusion":"denied","block_type":"hard","why":"insufficientAccessRights - WriteAccountRestrictions doesnt cover this attribute","ts":"2026-04-07T20:02:00Z"}
+{"hypothesis":"Debug secretsdump BAD_DN by reading impacket source","conclusion":"testing","ts":"2026-04-08T00:00:00Z"}
+{"hypothesis":"keylistattack with salt GARFIELD.HTBkrbtgt for current password NewKrb1!","conclusion":"testing","ts":"2026-04-08T00:05:00Z"}
