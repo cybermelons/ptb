@@ -1,4 +1,4 @@
-# Strategy (auto-generated, iteration -1)
+# Strategy (auto-generated, iteration 200)
 
 ## Current Position
 Phase: exploit
@@ -14,7 +14,7 @@ Priority: use creds to gain shell or escalate.
 - RODC01$:N3wR0dcP@ss! (password via rpcclient setuserinfo2 - updat)
 - l.wilson_adm:P@ssw0rd2026! (password via Confirmed working on fresh ins)
 
-## Confirmed Facts (46)
+## Confirmed Facts (49)
 - Initial recon on Garfield
 - Anonymous/null access reveals domain users
 - More themed Garfield usernames exist

@@ -1330,3 +1330,57 @@ Tested with: bloodyAD, ldapmodify, bat PowerShell, RODC01$ self-write — ALL de
 - Phase 2: bat stops firing → reset box
 - Phase 3: keylistattack empty after confirmed logon → re-check PRG membership
 - Any phase: 3 attempts → stop, reassess
+
+## ROOT CHAIN EXECUTION — SOCKS Tunnel (2026-04-08 on .211)
+
+### Key insight: don't change RODC01$ password
+Previous instances broke Kerberos to RODC01 by changing RODC01$ password via ForceChangePassword.
+RODC never replicated the change → key mismatch → all Kerberos tickets unreadable by RODC01.
+On fresh box: skip the password change entirely. Kerberos works.
+
+### Chain executed:
+1. scriptPath bat → l.wilson_adm password reset (P@ssw0rd2026!) — CONFIRMED
+2. addcomputer.py FAKEPC$ — CONFIRMED
+3. rbcd.py FAKEPC$ → RODC01$ — CONFIRMED
+4. getST.py Administrator@cifs/RODC01 — CONFIRMED (ticket saved)
+5. chisel tunnel via bat context (survived Defender; WinRM context got AV-killed) — CONFIRMED
+   SOCKS5 tunnel on 127.0.0.1:1080 → DC01 → 192.168.100.2
+6. secretsdump -use-vss RODC01 as Administrator via tunnel — PARTIAL SUCCESS
+   - SAM: local Admin hash 75be66596ddc5654acafd187fe51b960 (NOT domain Admin — different)
+   - LSA $MACHINE.ACC: RODC01$ ORIGINAL hash 0a3f810964bb5e1f0e52245f73700172
+   - NTDS.dit PEK decrypted, read hashes, but domain account hashes not printed
+   - DRSUAPI fault 0x57 — RODC doesn't support standard DRSUAPI
+   - Re-running -just-dc for domain cached hashes from NTDS.dit
+
+### New discoveries on RODC01:
+- Users on RODC01: a.wilson, svc_ldap, Administrator, Administrator.GARFIELD
+  - a.wilson and svc_ldap are NEW — never seen on DC01 enumeration
+- root.txt NOT on RODC01 (checked all profiles — all desktops empty except desktop.ini)
+- root.txt IS on DC01 (confirmed earlier: Admin hasn't logged in on DC01 so no profile yet... but flag must be created on Admin login or placed elsewhere)
+- NTDS.dit exists: C:\Windows\NTDS\ntds.dit (20MB) — locked by AD DS, can't download directly
+- LSA dump gave RODC01$ ORIGINAL machine hash: 0a3f810964bb5e1f0e52245f73700172
+- NTDS.dit -use-vss dump: PEK decrypted but 0 domain hashes printed (RODC stores secrets differently)
+- keylistattack with all 4 salt variants: BAD_INTEGRITY (krbtgt_8245 AES key mismatch despite password reset)
+- Scheduled task on RODC01: rpc_s_access_denied (cifs ticket doesn't grant atsvc access)
+- DC01 access from RODC01: KDC_ERR_PREAUTH_FAILED (our ccache has no TGT, only cifs service ticket)
+- RODC01 local Admin hash (75be66...) ≠ domain Admin hash (different on DC01)
+
+### What we have now:
+- Admin SMB access to RODC01 C$ (read + write files)
+- RODC01$ original NTLM hash (0a3f810964bb5e1f0e52245f73700172)  
+- SOCKS tunnel to 192.168.100.2 working
+- Can NOT: run commands as SYSTEM on RODC01 (schtask denied), access DC01 from RODC01 (no TGT)
+
+### What's weird:
+- a.wilson and svc_ldap exist ONLY on RODC01 — these might be local accounts or domain accounts we missed
+- NTDS.dit PEK decrypted but no hashes — impacket may not handle RODC NTDS.dit correctly
+- The RODC ntds.dit IS 20MB and has the data — we just can't parse it with impacket
+
+### Paths forward:
+1. Download ntds.dit + SYSTEM hive from RODC01 → parse offline with secretsdump.py -ntds -system
+   - Need to VSS snapshot or stop AD DS service first (ntds.dit is locked)
+   - regdump.bat is already on RODC01, just need a way to execute it (not schtask)
+2. Use RODC01$ original hash for keylistattack — but need ORIGINAL krbtgt_8245 AES key (we don't have it)
+3. Get a proper Administrator TGT (not just service ticket) — need to forge RODC golden ticket
+4. Try getST.py with -altservice to get host/RODC01 or atsvc ticket instead of just cifs
+5. Investigate a.wilson / svc_ldap — might have different access paths
