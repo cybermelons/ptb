@@ -1006,3 +1006,184 @@ If we DON'T know the key, keylistattack can't work.
 Or read it from AD somehow.
 
 ### I'm going in circles. Let me commit and ask for a fresh IP.
+
+## 10:55 — Fresh .223: PWDOK + PRGERR
+
+l.wilson_adm password changed ✓
+PRG add: Insufficient access rights ✗
+
+l.wilson can't add to PRG either. Same as j.arbuckle and l.wilson_adm.
+Nobody we control can modify PRG membership.
+
+### Revised approach: skip PRG, use PowerShell for krbtgt_8245 password change
+Since we can't add to PRG, keylistattack won't work (enumerates PRG).
+BUT: our PATCHED keylistattack (keylist_admin.py) bypasses PRG enumeration.
+It just needs the correct AES key.
+
+The key insight: use l.wilson_adm WinRM + PowerShell Set-ADAccountPassword
+to change krbtgt_8245 password THROUGH the chain:
+1. l.wilson_adm changes RODC01$ password via PowerShell (ForceChangePassword)
+2. Then use RODC01$ creds to change krbtgt_8245 via... double-hop again.
+
+OR: use the bat to change krbtgt_8245 password directly.
+The bat runs as l.wilson. Does l.wilson have any path to krbtgt_8245?
+l.wilson → ForceChangePassword → l.wilson_adm (used for password change)
+l.wilson_adm → ForceChangePassword → RODC01$
+RODC01$ → ForceChangePassword → krbtgt_8245
+
+This is a 3-hop chain. We can do hop 1 (bat) and hop 2 (WinRM).
+Hop 3 needs RODC01$ context which we can't get (double-hop).
+
+UNLESS: we do hop 2 from the bat too. But l.wilson doesn't have
+ForceChangePassword on RODC01$ — only l.wilson_adm does.
+
+### Wait: use the bat to run AS l.wilson_adm
+The bat already changed l.wilson_adm's password. Can the bat then
+use RunAs or Start-Process with l.wilson_adm creds to run PowerShell
+as l.wilson_adm, which then changes RODC01$ password?
+
+runas /user:garfield.htb\l.wilson_adm "powershell -c Set-ADAccountPassword..."
+
+This would be an interactive logon as l.wilson_adm FROM the bat!
+No double-hop because it's a fresh logon, not delegation.
+
+## 11:08 — STOP. Step back. Why am I stuck on keylistattack?
+
+### I have been tunnel-visioned on RODC chain for 4+ hours.
+32 AES key combinations failed. The key derivation issue might be 
+unsolvable from our position.
+
+### What ELSE can I do to become Administrator?
+I have:
+- l.wilson_adm WinRM (run commands on DC01)
+- PowerShell Set-ADAccountPassword with -Credential (LDAP bind as any user)
+- Bat as l.wilson (interactive, HTTP exfil)
+- WriteAccountRestrictions on RODC01$ (userAccountControl writeable)
+
+### Paths I haven't tried:
+1. Can l.wilson_adm use Set-ADAccountPassword to change ADMINISTRATOR's password?
+   Not directly (no ForceChangePassword on Admin). But what about through 
+   a chain we haven't explored?
+
+2. What if we modify RODC01$'s userAccountControl to REMOVE the PARTIAL_SECRETS flag?
+   That would make it a regular DC, potentially with DCSync rights.
+   We CAN write userAccountControl (confirmed earlier — same value succeeded).
+
+3. What about GenericAll or WriteDACL that we might have missed?
+
+4. Can l.wilson_adm create a GPO that runs as SYSTEM?
+
+### UAC PARTIAL_SECRETS removal: DENIED
+Can't change RODC01$ from RODC to full DC. AD protects the flag.
+
+### I need to completely abandon the RODC/krbtgt_8245 path.
+Every approach to use the RODC chain for getting Administrator has failed:
+- keylistattack: AES key wrong (32 combos failed)
+- Golden ticket: AES key wrong
+- secretsdump -rodcNo: BAD_DN
+- DCSync as RODC01$: access denied
+- Remove PARTIAL_SECRETS: access denied
+- Invoke-Command to RODC01: hangs
+- SMB to RODC01: hangs
+- altservice cross-machine: MODIFIED
+
+### What capabilities do I ACTUALLY have that I haven't fully exploited?
+
+1. **Bat as l.wilson with HTTP exfil** — can run ANY fast PowerShell command
+2. **l.wilson_adm WinRM** — PowerShell on DC01
+3. **Set-ADAccountPassword with -Credential** — change ANY password IF we have a chain
+
+### What if l.wilson runs mimikatz from the bat?
+l.wilson has an interactive session. Can she run Invoke-Mimikatz or
+a compiled mimikatz to dump credentials from LSASS?
+She's not admin — mimikatz needs SeDebugPrivilege.
+
+### What if l.wilson uses the bat to read NTDS.dit?
+She's not admin — can't access NTDS.
+
+### What about using the bat to query AD for sensitive attributes?
+Like ms-Mcs-AdmPwd (LAPS), or description fields, or other cleartext passwords?
+We already checked — no LAPS, no passwords in descriptions.
+
+### What if we use the bat as l.wilson to create a NEW attack path?
+Like adding an SPN to Administrator for kerberoasting?
+j.arbuckle has WriteProp on scriptPath only, not servicePrincipalName.
+l.wilson has... what rights does l.wilson actually have?
+
+## 11:13 — Completely stuck on root
+
+### EVERY approach to get Administrator hash has failed:
+- keylistattack AES256: BAD_INTEGRITY (32 salt/kvno combos)
+- keylistattack RC4: BAD_INTEGRITY (NT hash verified correct)
+- secretsdump -rodcNo: BAD_DN
+- DCSync: access denied
+- Golden ticket: same AES key issue
+- Invoke-Command to RODC01: hangs
+- SMB to RODC01: hangs
+- Local privesc on DC01: not admin
+- PRG membership: can't add anyone
+
+### The BAD_INTEGRITY on BOTH AES and RC4 suggests:
+The issue is NOT the key/salt. It's the TGT structure itself.
+Maybe the patched code constructs the ticket incorrectly.
+Or maybe this specific krbtgt_8245 has some attribute that
+breaks the standard keylistattack approach.
+
+### What I haven't tried:
+- Using the UNMODIFIED keylistattack.py (needs PRG members)
+- Maybe krbtgt_8245 uses a non-standard etype or key derivation
+- Maybe the kvno encoding is completely different on this box
+- Web research on "keylistattack BAD_INTEGRITY" for edge cases
+
+## 11:15 — PRG completely locked. RODC01$ also denied.
+
+### Every identity tried for PRG add: ALL DENIED
+- j.arbuckle (WriteProp is scriptPath only)
+- l.wilson (insufficient access)  
+- l.wilson_adm (insufficient access)
+- dsmod (insufficient access)
+- RODC01$ via -Credential (insufficient access)
+
+### But the UNMODIFIED keylistattack returned empty WITHOUT BAD_INTEGRITY
+When the original keylistattack ran with -full flag (SAMR enumeration),
+it got "Dumping Domain Credentials" with no errors — just empty results.
+That means the TGT was ACCEPTED by the KDC. The issue was empty PRG.
+
+My PATCHED code gets BAD_INTEGRITY. The original code doesn't.
+The difference: my patch constructs the TGT manually. The original
+uses KeyListSecrets.createPartialTGT() which works.
+
+### WAIT — what if the original code's TGT works but just targets the wrong user?
+The original enumerates PRG → empty → no targets → no output.
+But the TGT itself was VALID (no BAD_INTEGRITY).
+If I could feed a target user INTO the original code without modifying
+the TGT construction... like monkey-patching getAllowedUsersToReplicate
+to return ["Administrator:500"] instead of the actual PRG list.
+
+## 11:16 — Original keylistattack ALSO gets BAD_INTEGRITY
+
+The earlier "no error" was because empty PRG = zero TGS requests = no chance for error.
+When we force it to target Administrator, the ORIGINAL code also fails.
+The AES key IS wrong despite everything matching.
+
+### The krbtgt_8245 key derivation is non-standard or broken.
+This might be by box design — making keylistattack impossible.
+The intended root path must be something else entirely.
+
+### WHAT ELSE CAN WE DO?
+We're tunnel-visioned on RODC/keylistattack. Let me think about 
+what we ACTUALLY need: shell as Administrator on DC01.
+
+We have l.wilson_adm on DC01 + bat as l.wilson.
+Can we use the bat to ADD l.wilson_adm to local Administrators group?
+On a DC, local Administrators = BUILTIN\Administrators which includes Domain Admins.
+But adding to BUILTIN\Administrators requires... admin rights.
+
+### What about using the bat to run as SYSTEM?
+The bat runs as l.wilson (interactive). But what if the logon script 
+runs in a different context on some triggers? Or what if the TASK 
+that triggers the logon runs as SYSTEM and we can modify it?
+
+### What about abusing the RODC's trust relationship differently?
+RODC01$ is in Domain Controllers. Maybe we can forge a ticket 
+using RODC01$'s OWN key (not krbtgt_8245) that the DC trusts.
