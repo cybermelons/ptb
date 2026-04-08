@@ -654,3 +654,31 @@ and the bat just takes >60s to complete.
 ### NEW IDEA: Put Invoke-Command in the bat with explicit timeout
 Start-Job + Wait-Job -Timeout 10
 Then write result to SYSVOL\scripts via net use \\DC01\SYSVOL (local to DC01, not double-hop)
+
+## 10:15 — Bat trigger may be exhausted on .18.14 too
+
+### Evidence:
+- combo.bat fired (l.wilson_adm password changed) — trigger #1 ✓
+- icdebug.bat fired (ic_debug.txt created) — trigger #2 ✓  
+- copyout.bat NOT fired (no SMB callback, no file in loot) — trigger #3 ✗
+
+### Pattern across instances:
+- .178: bat fired ~2-3 times then stopped
+- .167: bat fired once (password change) then stopped  
+- .18.14: bat fired twice then stopped
+
+### Hypothesis: the trigger has a LIMITED number of fires per instance
+Maybe 2-3 fires max. After that, the logon simulation stops responding.
+This means we need to accomplish EVERYTHING in ONE bat, ONE trigger.
+
+### The winning strategy:
+Write ONE bat that does ALL of:
+1. Set-ADAccountPassword for l.wilson_adm
+2. Invoke-Command to RODC01 with Start-Job timeout
+3. Copy result to \\attacker\share
+4. Also copy as fallback to C:\Users\Public
+
+Upload it BEFORE the first toggle. ONE toggle fires it. Done.
+
+### But we already used 2 triggers on .18.14
+Need ANOTHER fresh instance. This time: ONE bat, ONE toggle.
