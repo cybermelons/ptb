@@ -1,9 +1,1 @@
-
-============================================================
-  Iteration 0
-============================================================
-  Phase: exploit
-  Dead branches: 55
-  Surface entries: 121
-  Tested entries: 229
-  Compacting state (17808 chars > 10000 threshold)...
+[script] Running: NEW FINDING: l.wilson_adm NTLM auth to RODC01 (192.168.100.2) WORKS (error 5 on shares, not error 86

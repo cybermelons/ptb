@@ -546,3 +546,47 @@ KERBEROS (via Invoke-Command). NTLM is a different auth path.
 - WinRM on port 5985 may be open on RODC01 (need to verify)
 - Use PowerShell New-PSSession with explicit creds and -Authentication Negotiate
 - This avoids Kerberos delegation entirely
+
+## 10:08 — FULL STRATEGY (stop executing, think)
+
+### What we have (assets):
+1. l.wilson_adm WinRM on DC01 — can run commands
+2. l.wilson_adm can NTLM auth to RODC01 (confirmed error 5 not 86)
+3. Bat trick — runs commands as l.wilson with real Kerberos TGT
+4. RODC01 reachable from DC01 at 192.168.100.2 (ping 2ms)
+5. WinRM port 5985 status on RODC01 — UNKNOWN (never confirmed)
+6. SMB port 445 on RODC01 — UNKNOWN (net use got error 5, meaning 445 IS open)
+
+### Wait — SMB port 445 IS open on RODC01
+Error 5 = access denied AFTER connecting. If port was closed we'd get 
+"network path not found" or timeout. Error 5 means TCP connected, SMB 
+negotiated, auth succeeded, but share access denied.
+
+### The real question: what can l.wilson_adm access on RODC01?
+She can't access C$ or NETLOGON. But what about:
+- SYSVOL share?
+- IPC$ share (for RPC)?
+- Custom shares?
+- WinRM (port 5985)?
+
+### Strategy:
+1. Enumerate RODC01 shares via l.wilson_adm (net view \\192.168.100.2)
+2. Test WinRM on RODC01 (Test-WSMan 192.168.100.2)
+3. If WinRM works with explicit NTLM creds → Invoke-Command to read root.txt
+4. If not → enumerate what shares ARE accessible and look for root.txt there
+5. If nothing → use the bat trick with NTLM net use (l.wilson has a real session, may work differently)
+
+### Key insight I keep missing:
+The double-hop blocks KERBEROS delegation. But NTLM with explicit creds 
+in New-PSSession -Authentication Negotiate should work because we're 
+providing the password directly, not delegating.
+
+This is DIFFERENT from Invoke-Command without -Credential (which tries 
+to delegate the existing session). With explicit -Credential -Authentication 
+Negotiate, it's a fresh NTLM auth — no delegation needed.
+
+### Execute as ONE script, not iterative guessing:
+1. Test-WSMan 192.168.100.2 (is WinRM open?)
+2. If yes: New-PSSession with explicit NTLM creds
+3. If session works: Invoke-Command to read root.txt
+4. All via crackmapexec winrm to DC01
