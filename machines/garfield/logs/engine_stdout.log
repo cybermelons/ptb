@@ -3,8 +3,6 @@
   Iteration 0
 ============================================================
   Phase: exploit
-  Dead branches: 49
+  Dead branches: 51
   Surface entries: 110
-  Tested entries: 190
-  Plan: [exploit] rodc-golden-ticket-with-known-krbtgt8245-key
-  Hypothesis: An RODC golden ticket for Administrator forged with the AES256 key derived from krbtgt_8245's known-plaintext password 'NewKrb1!' (salt=GARFIELD.HTBkrbtgt_8245) will be accepted by DC01 because Administrator is in msDS-RevealedUsers on RODC01, and prior soft-denial used a wrong/unknown key, not this computed key
+  Tested entries: 200

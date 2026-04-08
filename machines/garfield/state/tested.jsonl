@@ -194,3 +194,7 @@
 {"hypothesis":"Modify msDS-RevealOnDemandGroup on RODC01$","conclusion":"denied","block_type":"hard","why":"insufficientAccessRights - WriteAccountRestrictions doesnt cover this attribute","ts":"2026-04-07T20:02:00Z"}
 {"hypothesis":"Debug secretsdump BAD_DN by reading impacket source","conclusion":"testing","ts":"2026-04-08T00:00:00Z"}
 {"hypothesis":"keylistattack with salt GARFIELD.HTBkrbtgt for current password NewKrb1!","conclusion":"testing","ts":"2026-04-08T00:05:00Z"}
+{"hypothesis":"keylistattack all 6 salt variants","conclusion":"denied","block_type":"soft","why":"All salts pass auth (no BAD_INTEGRITY) but return empty — Allowed RODC PRG has no members. getAllowedUsersToReplicate() returns empty list. Need to add users to PRG first.","ts":"2026-04-08T00:10:00Z"}
+{"hypothesis":"Add Administrator to Allowed RODC PRG via l.wilson_adm PowerShell","conclusion":"testing","ts":"2026-04-08T00:12:00Z"}
+{"hypothesis":"Add Admin to PRG via dsmod as l.wilson_adm","conclusion":"denied","block_type":"hard","why":"Insufficient access rights","ts":"2026-04-08T00:13:00Z"}
+{"hypothesis":"keylistattack returns empty because PRG has zero members","conclusion":"confirmed","evidence":"ldapsearch shows Allowed RODC PRG has no member attribute. keylistattack getAllowedUsersToReplicate returns empty list.","ts":"2026-04-08T00:13:00Z"}
