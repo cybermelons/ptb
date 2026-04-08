@@ -590,3 +590,67 @@ Negotiate, it's a fresh NTLM auth — no delegation needed.
 2. If yes: New-PSSession with explicit NTLM creds
 3. If session works: Invoke-Command to read root.txt
 4. All via crackmapexec winrm to DC01
+
+## 10:09 — Strategy Results
+
+### [1] WinRM on RODC01: OPEN ✓
+Test-WSMan returned ProductVendor: Microsoft Corporation, Stack 3.0
+WinRM IS running on RODC01 (192.168.100.2:5985)
+
+### [2] Share enumeration: Error 5 (access denied)
+Can't enumerate shares. But this is net view which needs specific perms.
+
+### [3] New-PSSession: EMPTY OUTPUT
+No error, no output. CME might be swallowing the output.
+This is AMBIGUOUS — could be success (output suppressed) or silent failure.
+
+### [4] Invoke-Command root.txt: EMPTY OUTPUT  
+Same — no error, no output. Either:
+a) It worked but CME suppressed the output
+b) It failed silently
+c) root.txt doesn't exist on RODC01
+
+### CRITICAL: CME keeps returning empty for PowerShell output
+This has been a recurring issue. CME -x with PowerShell often returns empty.
+We need to capture output differently — write to a file we CAN read,
+or use CME -X (PowerShell mode) which might handle output differently.
+
+### Next: re-run step 3+4 with output to a file we can read
+Since l.wilson_adm can't read l.wilson's files, and can't write to 
+shared locations... what if we pipe the Invoke-Command output back 
+through the SAME WinRM session? Like:
+$result = Invoke-Command ...; Write-Output $result
+
+Or use -X flag instead of -x.
+
+## 10:10 — Invoke-Command to RODC01 with explicit creds: FAILED
+
+### Error: 0x8009030e — "A specified logon session does not exist"
+This is STILL the double-hop problem. Even with explicit -Credential and 
+-Authentication Negotiate, the error is the same: "logon session does not exist."
+
+The issue: when CME connects to DC01 via WinRM (NTLM), the session on DC01 
+runs as l.wilson_adm but with a NETWORK logon token (type 3). This token 
+cannot be used to authenticate outbound, even with explicit credentials, 
+because WinRM's security constrains outbound auth from network logon sessions.
+
+### The ONLY way to get outbound auth from DC01:
+1. Interactive logon (type 2) — RDP or console login
+2. Kerberos with delegation — blocked (no unconstrained/constrained delegation)
+3. CredSSP — allows credential forwarding, but needs to be enabled on DC01
+
+### Wait: the BAT runs as l.wilson with an INTERACTIVE logon (type 2 or 10)
+The logon script fires from a scheduled task / user logon — that's interactive.
+An interactive session CAN authenticate outbound.
+
+So the bat SHOULD be able to Invoke-Command to RODC01... but we confirmed 
+the bat's Invoke-Command HANGS (rf.txt never created).
+
+### Why does the bat's Invoke-Command hang?
+Maybe it's not hanging — maybe it succeeds but the output redirect 
+to C:\Windows\Temp fails. Or the Invoke-Command timeout is very long 
+and the bat just takes >60s to complete.
+
+### NEW IDEA: Put Invoke-Command in the bat with explicit timeout
+Start-Job + Wait-Job -Timeout 10
+Then write result to SYSVOL\scripts via net use \\DC01\SYSVOL (local to DC01, not double-hop)
