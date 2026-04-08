@@ -1284,10 +1284,49 @@ PWNED$ machine account
 - Local privesc on DC01: not admin, no useful privs
 - root.txt doesn't exist on DC01 until Admin logs in
 
-### Untested:
-1. Can the bat (l.wilson interactive) do S4U operations using RODC01$ keytab?
-2. Can we use RODC01$'s T2A4D to get an Administrator TGT (not service ticket)?
-3. What if we register RODC01$ as a DNS alias for DC01 and then the S4U ticket works?
-4. Can we use the bat to load mimikatz or Rubeus and inject the S4U ticket?
-5. Resource-based constrained delegation from RODC01$ to DC01 — can RODC01$ set RBCD on DC01$?
-6. Web research: is there a known technique for RODC with T2A4D to escalate to full DC?
+### Untested (updated 2026-04-08):
+1. Can RODC01$ (Domain Controllers group) write RBCD on DC01$?
+2. Can the bat on DC01 reach RODC01 (192.168.100.2) via LDAP/SMB (not just WinRM which hangs)?
+3. If bat can reach RODC01, can it dump Administrator cached hash? (Admin IS in msDS-RevealedUsers)
+4. Can we use the bat to run Rubeus/mimikatz and inject S4U ticket into Windows session?
+5. Web research: RODC T2A4D → full DC escalation technique?
+6. RODC01$ S4U2Self gives us Administrator PAC — can we forge a silver ticket to DC01 using DC01$'s key somehow?
+
+## ROOT ATTACK PLAN — PRG Chain (2026-04-08)
+
+### Key insight
+The bat runs as l.wilson with INTERACTIVE logon = Kerberos TGT in session.
+WinRM = network logon = no TGT (double-hop blocked).
+This means the bat can authenticate to RODC01 via Kerberos, WinRM cannot.
+
+### Path 1 — Constrained Delegation: DEAD
+Verified against state: msDS-AllowedToDelegateTo write returns insufficientAccessRights
+(tried 2x). AD enforces SeEnableDelegationPrivilege even with GenericAll on RODCs.
+userAccountControl modification blocked by PARTIAL_SECRETS_ACCOUNT enforcement.
+
+### Path 2 — PRG Chain: DEAD (confirmed 2026-04-08)
+Raw SD parse of PRG group DACL proves: IT Support ACE on PRG is WriteProp(bf9679a8=scriptPath),
+INHERITED from parent, scoped to user-class objects only. Useless on a group object.
+NO WriteProp(member) ACE exists for any non-admin SID. All PRG add attempts correctly failed.
+Tested with: bloodyAD, ldapmodify, bat PowerShell, RODC01$ self-write — ALL denied.
+
+### Path 3 — RBCD on RODC01$ (CONFIRMED WORKING but incomplete)
+- Entry 139: l.wilson_adm WriteAccountRestrictions → set RBCD on RODC01$ → CONFIRMED
+- S4U2Self+S4U2Proxy as FAKEPC$ → Administrator@cifs/RODC01$ ticket → WORKS
+- BUT: RODC01 at 192.168.100.2 unreachable from attacker
+- altservice rewrite to DC01: DEAD (KRB_AP_ERR_MODIFIED — wrong encryption key)
+- RBCD on DC01$: DEAD (l.wilson_adm has WriteAccountRestrictions on RODC01$ only, not DC01$)
+- TESTED 2026-04-08: RODC01$ write RBCD on DC01$ → DENIED (entry 282). Also RODC01$ creds stale on this instance.
+- NEW FINDING: WinRM IS open on RODC01 (Test-WSMan confirmed from DC01). Not a connectivity issue — it's auth/double-hop.
+- UNTESTED: bat as l.wilson (with native TGT) → Invoke-Command -ComputerName RODC01 with -Credential l.wilson_adm
+  - l.wilson TGT eliminates double-hop for first hop
+  - -Credential for l.wilson_adm creates new LDAP/Kerberos session for second hop
+  - l.wilson_adm has GenericAll... no, WriteAccountRestrictions on RODC01$ — but does she have WinRM access?
+  - Previous bat Invoke-Command tests HUNG — may have been timeout issue, not auth issue
+- UNTESTED: bat doing simpler RODC01 operations: net use \\192.168.100.2\C$ /user:l.wilson_adm, or Test-WSMan with creds
+
+#### Kill conditions
+- Phase 1: 3 syntax variants all access-denied → PRG path dead
+- Phase 2: bat stops firing → reset box
+- Phase 3: keylistattack empty after confirmed logon → re-check PRG membership
+- Any phase: 3 attempts → stop, reassess

@@ -1,4 +1,4 @@
-# Strategy (auto-generated, iteration 99)
+# Strategy (auto-generated, iteration -1)
 
 ## Current Position
 Phase: exploit
@@ -103,3 +103,9 @@ Priority: use creds to gain shell or escalate.
 - kerberoasting: 50% (missing: accounts_with_spns) → offline_crackable_tgs_hash
 - ntlm_relay_smb: 50% (missing: relay_target_without_smb_signing) → authenticated_session_on_relay_target
 - dns_poisoning: 50% (missing: traffic_to_poisoned_name) → captured_credential
+
+## Operator Notes (AUTHORITATIVE)
+- TWO ROOT PATHS IDENTIFIED: (1) Constrained delegation: l.wilson_adm GenericAll on RODC01$ → write msDS-AllowedToDelegateTo=cifs/DC01.garfield.htb → set T2A4D flag if needed → S4U2Self as Administrator → S4U2Proxy to DC01 → psexec. Risk: SeEnableDelegationPrivilege may block the write. Test with bloodyAD set object RODC01$ msDS-AllowedToDelegateTo. (2) PRG chain: j.arbuckle WriteProp on RODC PRG member attr → add l.wilson to Allowed RODC PRG → trigger bat logon (interactive=TGT) → RODC caches l.wilson creds → keylistattack with RODC01$ creds returns hashes. Path 1 is faster (no timing dependency). Try path 1 first, fall back to path 2.
+- PATH 1 (constrained delegation) DEAD — verified against state: msDS-AllowedToDelegateTo write returns insufficientAccessRights (tried 2x), userAccountControl blocked by AD PARTIAL_SECRETS_ACCOUNT enforcement, SeEnableDelegationPrivilege required even with GenericAll. Do not retry any delegation attribute writes on RODC01$.
+- PATH 2 (PRG chain) NEEDS RE-TEST — j.arbuckle WriteProp(member) on PRG is confirmed in ACL scan, but all add-member attempts were hard-blocked. Possible soft failure misclassified as hard. Re-test with exact syntax: bloodyAD or ldapmodify adding l.wilson DN to PRG member attribute using j.arbuckle creds. If PRG add works → trigger bat logon → RODC caches l.wilson → keylistattack with RODC01$ creds.
+- PRG CHAIN DEAD — verified statically. (1) WriteProp(member) on PRG was misclassified ACE, actual is WriteProp(scriptPath). 4 principals tested, all access denied. (2) keylistattack independently broken — AES keys from ForceChangePassword produce BAD_INTEGRITY. Both pillars of PRG chain are hard-blocked. Need entirely new root approach.
