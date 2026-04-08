@@ -377,3 +377,46 @@ Location: C:\Users\l.wilson_adm\Desktop\user.txt
 - Engine found user flag again, stopped thinking it was root
 - l.wilson_adm has no high-value privs (no SeImpersonate, SeBackup)
 - Need creative approach to read C:\Users\Administrator\Desktop\root.txt
+
+## 20:02 — Step Back Analysis
+
+### What we ACTUALLY have
+1. j.arbuckle — domain user, WriteProp(scriptPath) on CN=Users, SYSVOL write
+2. l.wilson_adm — WinRM shell on DC01 (confirmed Pwn3d)
+3. RODC01$ — password changed (NewRodc1!), SMB auth on DC01, in Domain Controllers OU
+4. krbtgt_8245 — password changed (NewKrb1!), NT hash known (e29fbd565f9e93af415d49169a2422c7)
+5. PWNED$ — machine account with RBCD to RODC01$, S4U gives Administrator@cifs/RODC01$
+6. The bat trick — can execute commands as l.wilson by toggling scriptPath
+
+### What ALMOST worked (most promising leads)
+1. **secretsdump -rodcNo -rodcKey**: DRSCrackNames SUCCEEDS (auth works!), DRSGetNCChanges fails with BAD_DN. This is the closest to root. The RODC key IS being accepted. The replication REQUEST format is wrong.
+2. **keylistattack**: Runs without errors but returns EMPTY. Might be because we changed krbtgt_8245 password (invalidating cached secrets encryption). On a FRESH instance without the password change, this might work.
+3. **RBCD S4U altservice**: Gets a ticket but KRB_AP_ERR_MODIFIED because ticket encrypted with RODC01$ key, DC01 can't decrypt.
+
+### Critical insight I keep missing
+The secretsdump BAD_DN error happens AFTER successful auth. That means:
+- j.arbuckle + rodcNo + rodcKey = valid DRSUAPI session
+- The issue is purely in the replication request parameters
+- Maybe the `-just-dc-user Administrator` is looking up the wrong DN
+- Or maybe we need to specify the RODC as the replication source
+
+### What I HAVEN'T tried
+1. secretsdump with different -just-dc-user formats (FQDN, SID, DN)
+2. secretsdump with -use-vss (but j.arbuckle isn't admin)
+3. On a FRESH instance: DON'T change krbtgt_8245, just run keylistattack immediately
+4. The bat trick to have l.wilson run mimikatz/secretsdump locally on DC
+5. Using RODC01$ to query its own secrets via ADWS or other interface
+6. Pass-the-ticket with the Administrator@cifs/RODC01$ ticket against DC01's SMB
+
+### The fundamental question
+We have a valid Administrator Kerberos ticket for cifs/RODC01$ (from S4U2Proxy).
+Can we USE this ticket against DC01 in any way? The service name is wrong (RODC01$ not DC01) but the PAC says Administrator. What if we present this ticket to a service on DC01 that accepts RODC01$ service tickets?
+
+### Pattern I'm not seeing
+The box is called Garfield. We used the scriptPath trick (Garfield connection: Garfield is lazy, makes others do work). The RODC is named RODC01. The RODC has Administrator cached. The intended path probably goes through the RODC somehow — maybe the keylistattack IS the answer, we just need the right key.
+
+### Next steps to try
+1. FRESH INSTANCE: Replay to l.wilson_adm, change RODC01$ password ONLY, DON'T change krbtgt_8245, run keylistattack with ORIGINAL krbtgt_8245 key derived from... we still don't know the original password.
+2. Try secretsdump -rodcNo with explicit DN instead of username
+3. Try pass-the-ticket with RODC01$ Admin ticket against DC01
+4. Research: how does impacket's -rodcNo flag actually work? What DN does it use?
