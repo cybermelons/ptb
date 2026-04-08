@@ -453,3 +453,24 @@ AES=$(python3 -c "from impacket.krb5.crypto import string_to_key; from impacket.
 # 5. Run keylistattack
 faketime '+8 hours' keylistattack.py "garfield.htb/j.arbuckle:Th1sD4mnC4t!@1978@DC01.garfield.htb" -rodcNo 8245 -rodcKey "$AES" -dc-ip $TARGET -full
 ```
+
+## 09:02 — Root flag exfil debugging
+
+### What works:
+- Bat fires on scriptPath toggle ✓
+- Bat can write to C:\Windows\Temp ✓ (root_flag.txt existed earlier)
+- Bat can run PowerShell ✓
+
+### What doesn't work:
+- l.wilson_adm can't read files l.wilson creates (different owner ACL)
+- l.wilson can't write to SYSVOL local path
+- Invoke-Command to RODC01 from inside bat — UNKNOWN (output goes to file we can't read)
+
+### Key question:
+Does the Invoke-Command to RODC01 actually WORK from inside the bat?
+The temp files existed but we couldn't read them to confirm the content.
+
+### Next: need fresh instance
+- Clean bat that writes Invoke-Command output + errors to C:\Users\Public
+- Test if C:\Users\Public is writable by logon scripts
+- If Invoke-Command fails, may need to use the SMB share approach with port 445 free
