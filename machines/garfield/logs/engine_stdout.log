@@ -1,1 +1,9 @@
-[script] Running: NEW FINDING: l.wilson_adm NTLM auth to RODC01 (192.168.100.2) WORKS (error 5 on shares, not error 86
+
+============================================================
+  Iteration 0
+============================================================
+  Phase: exploit
+  Dead branches: 60
+  Surface entries: 121
+  Tested entries: 244
+  Compacting state (18506 chars > 10000 threshold)...

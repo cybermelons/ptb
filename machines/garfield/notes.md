@@ -898,3 +898,111 @@ Like C:\Users\Administrator\ which doesn't exist because Admin hasn't logged in.
 ### Or: maybe we haven't tried the right approach to BECOME admin on DC01
 We have WriteAccountRestrictions on RODC01$. We used it for RBCD.
 What ELSE does WriteAccountRestrictions let us do?
+
+## 10:43 — ROOT.TXT DOES NOT EXIST ON DC01
+
+`where /r C:\ root.txt` as l.wilson (interactive, full domain user access): NOTFOUND
+Combined with l.wilson_adm search (also nothing): root.txt is NOT on DC01.
+
+### root.txt only exists after Administrator logs in
+This is standard HTB behavior — the flag file appears in the Administrator 
+profile when you achieve admin access and "log in" (RDP, WinRM, psexec).
+
+### This means: WE MUST BECOME ADMINISTRATOR ON DC01
+Reading a file isn't enough. We need to authenticate as Administrator 
+to DC01 which creates the profile and materializes root.txt.
+
+### How to become Administrator:
+We need Administrator's NT hash or password. Then:
+- psexec/wmiexec/evil-winrm as Administrator → profile created → root.txt appears
+
+### How to GET Administrator's hash:
+- keylistattack: failed (PRG empty, AES key wrong after password change)
+- secretsdump -rodcNo: failed (BAD_DN)
+- DCSync: no rights
+- Golden ticket: AES key derivation failed
+
+### WAIT: what if we DON'T change krbtgt_8245's password?
+On a fresh instance, the ORIGINAL krbtgt_8245 AES key is unknown to us.
+But: the keylistattack creates a partial TGT and sends it to the KDC.
+If we DON'T change krbtgt_8245, the KDC still has the ORIGINAL key.
+The keylistattack would work IF the PRG had members.
+
+### THE ANSWER: use the bat to ADD USERS TO THE PRG
+l.wilson runs as an interactive domain user. 
+Can l.wilson add Administrator to the Allowed RODC PRG?
+We tried as j.arbuckle (failed) and l.wilson_adm (failed).
+But l.wilson might have different permissions — she's in Remote Management Users
+and Remote Desktop Users. Or: use the bat to run dsmod/Add-ADGroupMember.
+
+## 10:50 — Final Strategy for Root
+
+### Key findings from .18.14:
+- root.txt DOES NOT EXIST on DC01 (where /r confirmed via HTTP exfil)
+- root.txt only appears after Administrator authenticates (creates profile)
+- HTTP exfil from bat WORKS (port 8080)
+- Trigger fires with 4-13s delay for fast commands
+- Trigger stops responding after ~6 rapid toggles (rate limit or service crash)
+- Invoke-Command to RODC01 returns empty (WinRM blocked)
+- SMB to RODC01 hangs from bat context
+
+### The root plan (fresh instance):
+1. Upload ONE bat that does:
+   a. Set-ADAccountPassword l.wilson_adm (get WinRM)
+   b. Add-ADGroupMember "Allowed RODC PRG" Administrator (enable keylistattack)
+   c. HTTP callback to confirm both succeeded
+2. ONE toggle. Wait for callback.
+3. If PRG add succeeded: run keylistattack with ORIGINAL krbtgt_8245 key
+   (DON'T change krbtgt_8245 password — use whatever key AD already has)
+   But we don't know the original key...
+   
+### Wait — we still don't know the original krbtgt_8245 AES key
+Even if we add Admin to PRG, keylistattack needs the AES key.
+And we can't compute it without knowing the password.
+Unless: use the bat to ALSO change krbtgt_8245 password (Set-ADAccountPassword
+from l.wilson who has Kerberos TGT → will derive AES keys correctly on DC)
+
+### REVISED plan:
+1. ONE bat:
+   a. Set-ADAccountPassword l.wilson_adm
+   b. rpcclient or net user to change RODC01$ password
+   c. THEN: as l.wilson_adm context... no, bat runs as l.wilson only
+   
+Actually: l.wilson doesn't have ForceChangePassword on RODC01$. 
+Only l.wilson_adm does. So we need TWO toggles:
+   
+Toggle 1 bat:
+   a. Set-ADAccountPassword l.wilson_adm (gets WinRM)
+   b. Add-ADGroupMember "Allowed RODC PRG" Administrator (if l.wilson can)
+   c. HTTP callback
+
+Then use l.wilson_adm WinRM to:
+   d. Change RODC01$ password (ForceChangePassword)
+   e. Change krbtgt_8245 password via PowerShell Set-ADAccountPassword
+      (l.wilson_adm → RODC01$ → krbtgt_8245 chain, via PowerShell not rpcclient)
+
+Then: keylistattack with properly-derived AES key
+
+### The PowerShell Set-ADAccountPassword approach for krbtgt_8245:
+Previously we used rpcclient which didn't derive AES keys correctly.
+PowerShell Set-ADAccountPassword runs ON THE DC and derives keys correctly.
+But l.wilson_adm needs to use RODC01$'s ForceChangePassword on krbtgt_8245.
+Can she do that via PowerShell? She'd need to authenticate AS RODC01$ or use
+-Credential with RODC01$ creds... which is the double-hop problem again.
+
+### Actually simpler:
+Use the bat (l.wilson interactive session) to do:
+Set-ADAccountPassword -Identity krbtgt_8245 -Reset -NewPassword ...
+Does l.wilson have ForceChangePassword on krbtgt_8245?
+No — only RODC01$ does. And RODC01$'s password change hasn't replicated.
+
+### SIMPLEST: 
+After adding Admin to PRG, DON'T change krbtgt_8245 at all.
+The original AES key is what the KDC uses.
+keylistattack forges a TGT with the rodcKey — which is krbtgt_8245's AES.
+If we DON'T know the key, keylistattack can't work.
+
+### UNLESS: we compute it from RODC01$'s msDS-KrbtgtFullRel
+Or read it from AD somehow.
+
+### I'm going in circles. Let me commit and ask for a fresh IP.
